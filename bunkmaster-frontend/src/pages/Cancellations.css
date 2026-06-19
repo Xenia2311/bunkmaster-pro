@@ -1,0 +1,86 @@
+.cancellations__section {
+  margin-bottom: 32px;
+}
+
+.cancellations__heading {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+}
+
+.cancellations__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cancellations__item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cancellations__item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cancellations__item-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.cancellations__reason {
+  font-style: italic;
+  font-size: 0.85rem;
+  margin-top: 4px;
+}
+
+.cancellations__item--resolved {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cancellations__badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(61, 220, 151, 0.12);
+  color: var(--go);
+  border: 1px solid var(--go);
+  white-space: nowrap;
+}
+
+.cancellations__options {
+  border-top: 1px dashed var(--line-strong);
+  padding-top: 12px;
+}
+
+.cancellations__options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.cancellations__option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--ink);
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease;
+}
+
+.cancellations__option:hover {
+  border-color: var(--go);
+}

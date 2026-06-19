@@ -1,0 +1,10 @@
+.page-title {
+  font-size: 2rem;
+  margin: 4px 0 8px;
+}
+
+.page-sub {
+  font-size: 0.9rem;
+  margin-bottom: 24px;
+  max-width: 540px;
+}

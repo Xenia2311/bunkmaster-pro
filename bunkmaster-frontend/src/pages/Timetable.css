@@ -1,0 +1,111 @@
+.timetable-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.timetable-topbar h1 { font-size: 2rem; margin: 4px 0 6px; }
+.timetable-topbar p  { font-size: 0.88rem; }
+
+.timetable__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ghost);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.timetable-scroll { overflow-x: auto; padding-bottom: 8px; }
+
+.timetable-grid {
+  display: grid;
+  grid-template-columns: 64px repeat(9, minmax(120px, 1fr));
+  gap: 5px;
+  min-width: 800px;
+}
+
+.timetable-grid__corner {}
+
+.timetable-grid__time {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--ghost);
+  letter-spacing: 0.05em;
+  padding: 6px 4px;
+  text-align: center;
+}
+
+.timetable-grid__day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.timetable-grid__cell {
+  background: var(--ink-1);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-height: 80px;
+  transition: border-color 0.15s;
+}
+.timetable-grid__cell:hover { border-color: var(--line-3); }
+
+.timetable-grid__cell--empty {
+  background: transparent;
+  border: none;
+}
+.timetable-grid__cell--break {
+  align-items: center;
+  justify-content: center;
+  opacity: 0.35;
+  font-size: 1.1rem;
+}
+
+.timetable-grid__select {
+  background: var(--ink);
+  border: 1px solid var(--line-2);
+  color: var(--paper);
+  border-radius: 6px;
+  padding: 5px 6px;
+  font-size: 0.72rem;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+.timetable-grid__select:focus { border-color: var(--signal); outline: none; }
+.timetable-grid__select--lab  { font-size: 0.65rem; padding: 3px 5px; color: var(--ghost-2); }
+
+.timetable-grid__lecture {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--paper);
+}
+
+.timetable-grid__labs { display: flex; flex-direction: column; gap: 2px; }
+
+.timetable-grid__lab-readonly {
+  font-size: 0.65rem;
+  color: var(--ghost);
+  font-family: var(--font-mono);
+}

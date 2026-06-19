@@ -1,0 +1,110 @@
+.admin__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.admin__card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin__card h3 {
+  font-size: 1.05rem;
+  margin-bottom: 0;
+}
+
+.admin__card--wide {
+  grid-column: 1 / -1;
+}
+
+.admin__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.admin__list--scroll {
+  max-height: 180px;
+}
+
+.admin__list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin__list-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 500;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin__inline-input {
+  background: var(--ink);
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  width: 80px;
+}
+
+.admin__delete-btn {
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.admin__inline-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.admin__inline-form input,
+.admin__inline-form select {
+  background: var(--ink);
+  border: 1px solid var(--line-strong);
+  color: var(--paper);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+
+.admin__inline-form--wrap {
+  flex-wrap: wrap;
+}
+
+.admin__cancel-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+.admin__cancel-form .field {
+  margin-bottom: 0;
+}
+
+.admin__cancel-form button {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .admin__cancel-form {
+    grid-template-columns: 1fr;
+  }
+}

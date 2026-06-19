@@ -1,0 +1,21 @@
+import { api } from "./client";
+
+export function createSection({ name, institutionName }) {
+  return api.post("/sections", { name, institutionName });
+}
+
+export function joinSection({ joinCode, batchNumber }) {
+  return api.post("/sections/join", { joinCode, batchNumber });
+}
+
+export function getSection(sectionId) {
+  return api.get(`/sections/${sectionId}`);
+}
+
+export function updateSection(sectionId, body) {
+  return api.patch(`/sections/${sectionId}`, body);
+}
+
+export function updateMember(sectionId, userId, body) {
+  return api.patch(`/sections/${sectionId}/members/${userId}`, body);
+}
