@@ -25,10 +25,10 @@ model User {
   memberships       SectionMembership[]
   attendanceRecords AttendanceRecord[]
   pushSubscriptions PushSubscription[]
-  cancellationsMade    Cancellation[]   @relation("CancellationCreatedBy")
-  subjectsCreated      Subject[]        @relation("SubjectCreatedBy")
-  announcementsMade    Announcement[]   @relation("AnnouncementCreatedBy")
-  extraLecturesMade    ExtraLecture[]   @relation("ExtraLectureCreatedBy")
+  cancellationsMade Cancellation[]      @relation("CancellationCreatedBy")
+  subjectsCreated   Subject[]           @relation("SubjectCreatedBy")
+  announcementsMade Announcement[]      @relation("AnnouncementCreatedBy")
+  extraLecturesMade ExtraLecture[]      @relation("ExtraLectureCreatedBy")
 }
 
 // ---------------------------------------------------------------------------
@@ -102,22 +102,22 @@ model SectionMembership {
 // ---------------------------------------------------------------------------
 
 model Subject {
-  id        String   @id @default(uuid())
-  sectionId String
-  name      String
+  id            String   @id @default(uuid())
+  sectionId     String
+  name          String
   // Optional: total lectures planned for the semester (used for strategy calc)
   semesterTotal Int?
   createdById   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  section          Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  createdBy        User?              @relation("SubjectCreatedBy", fields: [createdById], references: [id])
-  timetableSlots   TimetableSlot[]
-  labSlots         TimetableLabSlot[]
+  section           Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdBy         User?              @relation("SubjectCreatedBy", fields: [createdById], references: [id])
+  timetableSlots    TimetableSlot[]
+  labSlots          TimetableLabSlot[]
   attendanceRecords AttendanceRecord[]
-  cancellations    Cancellation[]
-  extraLectures    ExtraLecture[]
+  cancellations     Cancellation[]
+  extraLectures     ExtraLecture[]
 
   @@index([sectionId])
 }
@@ -131,15 +131,16 @@ model Subject {
 model TimetableSlot {
   id        String  @id @default(uuid())
   sectionId String
-  dayOfWeek Int     // 0-4
-  slotIndex Int     // 0-8
+  dayOfWeek Int // 0-4
+  slotIndex Int // 0-8
   isBreak   Boolean @default(false)
   subjectId String? // lecture for this slot (whole section)
 
-  section Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  subject Subject?           @relation(fields: [subjectId], references: [id])
-  labSlots TimetableLabSlot[]
-  cancellations Cancellation[]
+  section           Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subject           Subject?           @relation(fields: [subjectId], references: [id])
+  labSlots          TimetableLabSlot[]
+  cancellations     Cancellation[]
+  attendanceRecords AttendanceRecord[]
 
   @@unique([sectionId, dayOfWeek, slotIndex])
   @@index([sectionId])
@@ -147,9 +148,9 @@ model TimetableSlot {
 
 // Per-batch lab assignment for a given timetable slot
 model TimetableLabSlot {
-  id              String @id @default(uuid())
+  id              String  @id @default(uuid())
   timetableSlotId String
-  batchNumber     Int    // 1-4
+  batchNumber     Int // 1-4
   subjectId       String?
 
   timetableSlot TimetableSlot @relation(fields: [timetableSlotId], references: [id], onDelete: Cascade)
@@ -222,16 +223,16 @@ model Cancellation {
 enum AttendanceStatus {
   attended
   missed
-  cancelled      // lecture didn't happen, doesn't count toward total
+  cancelled // lecture didn't happen, doesn't count toward total
   not_yet_occurred
 }
 
 model AttendanceRecord {
-  id        String           @id @default(uuid())
-  userId    String
-  subjectId String
-  date      DateTime         @db.Date
-  status    AttendanceStatus @default(not_yet_occurred)
+  id              String           @id @default(uuid())
+  userId          String
+  subjectId       String
+  date            DateTime         @db.Date
+  status          AttendanceStatus @default(not_yet_occurred)
   // which timetable slot this record corresponds to (for traceability)
   timetableSlotId String?
 
@@ -240,6 +241,8 @@ model AttendanceRecord {
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  timetableSlot TimetableSlot? @relation(fields: [timetableSlotId], references: [id])
 
   @@unique([userId, subjectId, date, timetableSlotId])
   @@index([userId, subjectId])
