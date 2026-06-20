@@ -2,6 +2,10 @@
 node_modules/
 **/node_modules/
 
+# Prisma generated files
+.prisma/
+**/.prisma/
+
 # Environment variables
 .env
 .env.*
@@ -21,5 +25,5 @@ build/
 .DS_Store
 Thumbs.db
 
-bunkmaster-backend/.env
-bunkmaster-backend/node_modules/
+# Optional
+.vscode/
