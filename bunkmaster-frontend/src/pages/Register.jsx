@@ -21,7 +21,7 @@ export default function Register() {
       navigate("/sections");
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(Array.isArray(err.details) ? err.details.map((d) => d.msg).join(" ") : err.message);
+        setError(err.details?.map((d) => d.msg).join(" ") || err.message);
       } else {
         setError("Something went wrong.");
       }

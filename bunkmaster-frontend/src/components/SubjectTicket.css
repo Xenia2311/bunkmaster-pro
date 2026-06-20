@@ -163,3 +163,11 @@
   .ticket__stub::before,
   .ticket__stub::after { display: none; }
 }
+
+@media (max-width: 640px) {
+  .ticket { grid-template-columns: 1fr 90px; }
+  .ticket__main { padding: 16px 14px; }
+  .ticket__subject { font-size: 0.95rem; }
+  .ticket__stub { min-width: 90px; padding: 14px 8px; }
+  .ticket__pct { font-size: 1.1rem; }
+}

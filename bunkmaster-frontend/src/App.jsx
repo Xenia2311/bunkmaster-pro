@@ -11,6 +11,8 @@ import Today from "./pages/Today";
 import Timetable from "./pages/Timetable";
 import Cancellations from "./pages/Cancellations";
 import Members from "./pages/Members";
+import NoticeBoard from "./pages/NoticeBoard";
+import ExtraLectures from "./pages/ExtraLectures";
 import Admin from "./pages/Admin";
 
 export default function App() {
@@ -35,6 +37,8 @@ export default function App() {
             <Route path="/today" element={<Today />} />
             <Route path="/timetable" element={<Timetable />} />
             <Route path="/members" element={<Members />} />
+            <Route path="/notices" element={<NoticeBoard />} />
+            <Route path="/extra-lectures" element={<ExtraLectures />} />
             <Route path="/cancellations" element={<Cancellations />} />
             <Route path="/admin" element={<Admin />} />
           </Route>

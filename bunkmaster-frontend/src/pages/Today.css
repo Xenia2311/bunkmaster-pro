@@ -118,3 +118,16 @@
 }
 
 .cr-member__btns { display: flex; gap: 4px; flex-shrink: 0; }
+
+@media (max-width: 640px) {
+  .today-header       { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .today-header__date { font-size: 1.5rem; }
+  .today-header__controls { flex-wrap: wrap; gap: 6px; }
+
+  .today-row { padding: 14px; gap: 10px; }
+  .today-row__btns { flex-direction: column; gap: 6px; }
+  .today-row__btns .btn { width: 100%; }
+
+  .cr-slot__header { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .cr-slot__members { grid-template-columns: 1fr; }
+}

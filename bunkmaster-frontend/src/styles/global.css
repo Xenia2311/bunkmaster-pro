@@ -268,3 +268,32 @@ input, select, textarea { font-family: var(--font-body); }
   border-top: 1px solid var(--line-2);
   margin: 24px 0;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE OVERRIDES
+   ═══════════════════════════════════════════════════════════════ */
+
+@media (max-width: 640px) {
+  /* Shell */
+  .app-shell {
+    padding: 16px 14px 80px;
+  }
+
+  /* Buttons */
+  .btn { padding: 10px 16px; font-size: 0.82rem; }
+  .btn--sm { padding: 7px 12px; font-size: 0.75rem; }
+
+  /* Fields */
+  .field input,
+  .field select,
+  .field textarea {
+    font-size: 16px; /* prevents iOS zoom on focus */
+    padding: 10px 12px;
+  }
+
+  /* Surface */
+  .surface { padding: 16px; border-radius: var(--r-md); }
+  .surface--raised { padding: 14px 16px; border-radius: var(--r-md); }
+}
+
+/* Bottom nav padding is handled in NavBar.css */

@@ -176,3 +176,11 @@
 .report-table__td--name {}
 .report-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 2px; }
 .report-role { font-size: 0.62rem; }
+
+@media (max-width: 640px) {
+  .page-hd { flex-direction: column; align-items: flex-start; }
+  .members-grid { grid-template-columns: 1fr; }
+  .members-tabs { width: 100%; }
+  .members-tabs__btn { flex: 1; text-align: center; font-size: 0.78rem; padding: 8px 10px; }
+  .report-table__th, .report-table__td { padding: 8px 10px; }
+}

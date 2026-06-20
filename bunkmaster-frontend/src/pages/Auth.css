@@ -78,3 +78,8 @@
   color: var(--ghost-2);
   margin-top: 20px;
 }
+
+@media (max-width: 480px) {
+  .auth-card { padding: 24px 18px; }
+  .auth-card h2 { font-size: 1.35rem; }
+}

@@ -1,0 +1,108 @@
+.el-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.el-header h1 { font-size: 2rem; margin: 4px 0 6px; }
+
+/* ─── Form ───────────────────────────────────────────────────── */
+.el-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+.el-form h3 { font-size: 1.05rem; }
+
+.el-form__top {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* ─── Attendance grid ────────────────────────────────────────── */
+.el-attendance {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--ink-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  padding: 16px;
+}
+
+.el-attendance__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.el-attendance__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.el-member {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink-1);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+  padding: 8px 12px;
+}
+
+.el-member__name {
+  font-size: 0.85rem;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.el-member__btns { display: flex; gap: 4px; flex-shrink: 0; }
+
+/* ─── List ───────────────────────────────────────────────────── */
+.el-list { display: flex; flex-direction: column; gap: 10px; }
+
+.el-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.el-card__subject {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 4px;
+}
+
+.el-card__reason {
+  font-style: italic;
+  font-size: 0.82rem;
+  color: var(--ghost) !important;
+  margin: 4px 0;
+}
+
+.el-empty { text-align: center; padding: 48px 24px; }
+.el-empty h3 { margin-bottom: 8px; }
+
+/* ─── Mobile ─────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .el-header      { flex-direction: column; }
+  .el-form__top   { grid-template-columns: 1fr; }
+  .el-attendance__grid { grid-template-columns: 1fr; }
+  .el-card        { flex-direction: column; align-items: flex-start; }
+}

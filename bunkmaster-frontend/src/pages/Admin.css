@@ -108,3 +108,10 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 640px) {
+  .admin__grid { grid-template-columns: 1fr; }
+  .admin__cancel-form { grid-template-columns: 1fr; }
+  .admin__inline-form { flex-wrap: wrap; }
+  .admin__card--wide { grid-column: 1; }
+}

@@ -1,7 +1,7 @@
 import { api } from "./client";
 
-export function createSection({ name, institutionName }) {
-  return api.post("/sections", { name, institutionName });
+export function createSection({ branch, year, institutionName }) {
+  return api.post("/sections", { branch, year, institutionName });
 }
 
 export function joinSection({ joinCode, batchNumber }) {

@@ -5,81 +5,100 @@ import { createSection, joinSection } from "../api/sections";
 import { ApiError } from "../api/client";
 import "./Sections.css";
 
+const BRANCHES = ["CST", "CS", "IT", "AI", "DS", "ENC"];
+const YEARS    = [
+  { value: "First",  label: "1st Year" },
+  { value: "Second", label: "2nd Year" },
+  { value: "Third",  label: "3rd Year" },
+  { value: "Fourth", label: "4th Year" },
+];
+
 export default function Sections() {
   const { memberships, refreshMe, switchSection, activeSectionId } = useAuth();
   const navigate = useNavigate();
 
-  const [mode, setMode] = useState("join"); // "join" | "create"
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [mode, setMode]         = useState("join");
+  const [error, setError]       = useState(null);
+  const [success, setSuccess]   = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Join form state
-  const [joinCode, setJoinCode] = useState("");
-  const [batchNumber, setBatchNumber] = useState("1");
+  // Join form
+  const [joinCode, setJoinCode]         = useState("");
+  const [batchNumber, setBatchNumber]   = useState("1");
 
-  // Create form state
-  const [sectionName, setSectionName] = useState("");
+  // Create form
+  const [branch, setBranch]             = useState("");
+  const [year, setYear]                 = useState("");
   const [institutionName, setInstitutionName] = useState("");
 
   async function handleJoin(e) {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setSubmitting(true);
+    setError(null); setSuccess(null); setSubmitting(true);
     try {
-      const res = await joinSection({ joinCode: joinCode.trim().toUpperCase(), batchNumber: Number(batchNumber) });
+      const res = await joinSection({
+        joinCode: joinCode.trim().toUpperCase(),
+        batchNumber: Number(batchNumber),
+      });
       await refreshMe();
       switchSection(res.section.id);
-      setSuccess(`Joined ${res.section.name}!`);
-      setJoinCode("");
       navigate("/");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not join section.");
-    } finally {
-      setSubmitting(false);
-    }
+      setError(err instanceof ApiError ? err.message : "Could not join class.");
+    } finally { setSubmitting(false); }
   }
 
   async function handleCreate(e) {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
-    setSubmitting(true);
+    setError(null); setSuccess(null); setSubmitting(true);
     try {
-      const res = await createSection({ name: sectionName.trim(), institutionName: institutionName.trim() || undefined });
+      const res = await createSection({
+        branch,
+        year,
+        institutionName: institutionName.trim() || undefined,
+      });
       await refreshMe();
       switchSection(res.section.id);
       setSuccess(`Created ${res.section.name}! Join code: ${res.section.joinCode}`);
-      setSectionName("");
-      setInstitutionName("");
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not create section.");
-    } finally {
-      setSubmitting(false);
-    }
+      setError(err instanceof ApiError ? err.message : "Could not create class.");
+    } finally { setSubmitting(false); }
   }
 
   return (
     <div className="app-shell">
-      <div className="eyebrow">Sections</div>
+      <div className="eyebrow">Classes</div>
       <h1 className="page-title">Your classes</h1>
-      <p className="page-sub">Join an existing class with a code from your CR/SR, or start a new one.</p>
+      <p className="page-sub">
+        Join an existing class with a code from your CR/SR, or create a new one.
+      </p>
 
+      {/* ── Active memberships ── */}
       {memberships.length > 0 && (
         <div className="surface section-list">
           {memberships.map((m) => (
-            <div key={m.sectionId} className={`section-list__item${m.sectionId === activeSectionId ? " section-list__item--active" : ""}`}>
+            <div
+              key={m.sectionId}
+              className={`section-list__item${m.sectionId === activeSectionId ? " section-list__item--active" : ""}`}
+            >
               <div>
                 <div className="section-list__name">{m.section.name}</div>
                 <div className="eyebrow">
-                  {m.role.toUpperCase()} · Batch {m.batchNumber} · Code: <span className="mono">{m.section.joinCode}</span>
+                  {m.role.toUpperCase()} · Batch {m.batchNumber} · Code:{" "}
+                  <span className="mono">{m.section.joinCode}</span>
                 </div>
+                {m.section.institutionName && (
+                  <div className="eyebrow" style={{ marginTop: 2 }}>
+                    {m.section.institutionName}
+                  </div>
+                )}
               </div>
               {m.sectionId === activeSectionId ? (
                 <span className="eyebrow text-go">Active</span>
               ) : (
-                <button className="btn btn--ghost" onClick={() => { switchSection(m.sectionId); navigate("/"); }}>
+                <button
+                  className="btn btn--ghost btn--sm"
+                  onClick={() => { switchSection(m.sectionId); navigate("/"); }}
+                >
                   Switch
                 </button>
               )}
@@ -88,77 +107,91 @@ export default function Sections() {
         </div>
       )}
 
-      {error && <div className="error-banner">{error}</div>}
+      {error   && <div className="error-banner">{error}</div>}
       {success && <div className="success-banner">{success}</div>}
 
+      {/* ── Mode tabs ── */}
       <div className="section-tabs">
         <button
           className={`section-tabs__btn${mode === "join" ? " section-tabs__btn--active" : ""}`}
           onClick={() => setMode("join")}
-        >
-          Join with code
-        </button>
+        >Join with code</button>
         <button
           className={`section-tabs__btn${mode === "create" ? " section-tabs__btn--active" : ""}`}
           onClick={() => setMode("create")}
-        >
-          Create a new class
-        </button>
+        >Create a new class</button>
       </div>
 
-      {mode === "join" ? (
+      {/* ── Join form ── */}
+      {mode === "join" && (
         <form className="surface" onSubmit={handleJoin}>
           <div className="field">
             <label htmlFor="joinCode">Join code</label>
             <input
-              id="joinCode"
-              value={joinCode}
+              id="joinCode" value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
-              placeholder="e.g. 7K2QXP"
-              required
-              className="mono"
-              style={{ textTransform: "uppercase" }}
+              placeholder="e.g. 7K2QXP" required
+              style={{ textTransform: "uppercase", fontFamily: "var(--font-mono)" }}
             />
           </div>
           <div className="field">
             <label htmlFor="batchNumber">Your lab batch</label>
             <select id="batchNumber" value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)}>
-              <option value="1">Batch 1</option>
-              <option value="2">Batch 2</option>
-              <option value="3">Batch 3</option>
-              <option value="4">Batch 4</option>
+              {[1,2,3,4].map((b) => <option key={b} value={b}>Batch {b}</option>)}
             </select>
           </div>
-          <button type="submit" className="btn btn--primary" disabled={submitting}>
-            {submitting ? "Joining..." : "Join class"}
+          <button className="btn btn--primary" type="submit" disabled={submitting}>
+            {submitting ? "Joining…" : "Join class"}
           </button>
         </form>
-      ) : (
+      )}
+
+      {/* ── Create form ── */}
+      {mode === "create" && (
         <form className="surface" onSubmit={handleCreate}>
-          <div className="field">
-            <label htmlFor="sectionName">Class / section name</label>
-            <input
-              id="sectionName"
-              value={sectionName}
-              onChange={(e) => setSectionName(e.target.value)}
-              placeholder="e.g. CS 3rd Year - Section B"
-              required
-            />
+          <div className="sections-create__row">
+            <div className="field" style={{ marginBottom: 0, flex: 1 }}>
+              <label htmlFor="branch">Branch</label>
+              <select id="branch" value={branch} onChange={(e) => setBranch(e.target.value)} required>
+                <option value="">Select branch</option>
+                {BRANCHES.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ marginBottom: 0, flex: 1 }}>
+              <label htmlFor="year">Year</label>
+              <select id="year" value={year} onChange={(e) => setYear(e.target.value)} required>
+                <option value="">Select year</option>
+                {YEARS.map((y) => <option key={y.value} value={y.value}>{y.label}</option>)}
+              </select>
+            </div>
           </div>
+
+          {branch && year && (
+            <div className="sections-create__preview surface--raised">
+              <div className="eyebrow">This will create</div>
+              <div className="sections-create__preview-name">
+                {branch} {YEARS.find((y) => y.value === year)?.label}
+              </div>
+              <p style={{ fontSize: "0.82rem", marginTop: 4 }}>
+                Only one class can exist per branch and year. If this class already exists, join it using the join code instead.
+              </p>
+            </div>
+          )}
+
           <div className="field">
-            <label htmlFor="institutionName">Institution (optional)</label>
+            <label htmlFor="institutionName">Institution name (optional)</label>
             <input
-              id="institutionName"
-              value={institutionName}
+              id="institutionName" value={institutionName}
               onChange={(e) => setInstitutionName(e.target.value)}
               placeholder="e.g. ABC Institute of Technology"
             />
           </div>
-          <p className="text-ghost" style={{ marginBottom: 16, fontSize: "0.85rem" }}>
-            You'll become the Class Representative (CR) and get a join code to share.
+
+          <p className="text-ghost" style={{ fontSize: "0.82rem", marginBottom: 16 }}>
+            You'll become the Class Representative (CR) and get a join code to share with your classmates.
           </p>
-          <button type="submit" className="btn btn--primary" disabled={submitting}>
-            {submitting ? "Creating..." : "Create class"}
+          <button className="btn btn--primary" type="submit" disabled={submitting || !branch || !year}>
+            {submitting ? "Creating…" : "Create class"}
           </button>
         </form>
       )}

@@ -160,3 +160,24 @@
   .dash-overview__pct { font-size: 3rem; }
   .dash-overview__gauge { display: none; }
 }
+
+/* ─── Mobile overrides ───────────────────────────────────────── */
+@media (max-width: 640px) {
+  .dash-header h1     { font-size: 1.6rem; }
+  .dash-header__actions { flex-direction: row; flex-wrap: wrap; }
+
+  .dash-overview      { padding: 18px 16px; gap: 16px; }
+  .dash-overview__pct { font-size: 2.8rem; }
+  .dash-overview__gauge { display: none; }
+
+  .dash-ribbon {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .dash-ribbon__val   { font-size: 1.2rem; }
+
+  .dash-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
