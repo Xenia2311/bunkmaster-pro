@@ -5,13 +5,15 @@ const cors = require("cors");
 
 const { errorHandler, notFoundHandler } = require("./middleware/errorHandler");
 
-const authRoutes = require("./routes/auth");
-const sectionRoutes = require("./routes/sections");
-const subjectRoutes = require("./routes/subjects");
-const timetableRoutes = require("./routes/timetable");
-const holidayRoutes = require("./routes/holidays");
-const attendanceRoutes = require("./routes/attendance");
+const authRoutes         = require("./routes/auth");
+const sectionRoutes      = require("./routes/sections");
+const subjectRoutes      = require("./routes/subjects");
+const timetableRoutes    = require("./routes/timetable");
+const holidayRoutes      = require("./routes/holidays");
+const attendanceRoutes   = require("./routes/attendance");
 const cancellationRoutes = require("./routes/cancellations");
+const announcementRoutes = require("./routes/announcements");
+const extraLectureRoutes = require("./routes/extraLectures");
 
 const app = express();
 
@@ -34,11 +36,13 @@ app.use("/auth", authRoutes);
 app.use("/sections", sectionRoutes);
 
 // Nested resources under a section
-app.use("/sections/:sectionId/subjects", subjectRoutes);
-app.use("/sections/:sectionId/timetable", timetableRoutes);
-app.use("/sections/:sectionId/holidays", holidayRoutes);
-app.use("/sections/:sectionId/attendance", attendanceRoutes);
-app.use("/sections/:sectionId/cancellations", cancellationRoutes);
+app.use("/sections/:sectionId/subjects",       subjectRoutes);
+app.use("/sections/:sectionId/timetable",      timetableRoutes);
+app.use("/sections/:sectionId/holidays",       holidayRoutes);
+app.use("/sections/:sectionId/attendance",     attendanceRoutes);
+app.use("/sections/:sectionId/cancellations",  cancellationRoutes);
+app.use("/sections/:sectionId/announcements",  announcementRoutes);
+app.use("/sections/:sectionId/extra-lectures", extraLectureRoutes);
 
 // 404 + error handling (must be last)
 app.use(notFoundHandler);

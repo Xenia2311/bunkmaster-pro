@@ -100,11 +100,15 @@ router.post(
  */
 router.get("/me", requireAuth, async (req, res, next) => {
   try {
+    const YEAR_LABELS = {
+      First: "1st Year", Second: "2nd Year", Third: "3rd Year", Fourth: "4th Year",
+    };
+
     const memberships = await prisma.sectionMembership.findMany({
       where: { userId: req.user.id },
       include: {
         section: {
-          select: { id: true, name: true, joinCode: true, institutionName: true },
+          select: { id: true, branch: true, year: true, joinCode: true, institutionName: true },
         },
       },
     });
@@ -113,7 +117,10 @@ router.get("/me", requireAuth, async (req, res, next) => {
       user: { id: req.user.id, email: req.user.email, name: req.user.name },
       memberships: memberships.map((m) => ({
         sectionId: m.sectionId,
-        section: m.section,
+        section: {
+          ...m.section,
+          name: `${m.section.branch} ${YEAR_LABELS[m.section.year] || m.section.year}`,
+        },
         role: m.role,
         batchNumber: m.batchNumber,
       })),

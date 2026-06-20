@@ -25,30 +25,55 @@ model User {
   memberships       SectionMembership[]
   attendanceRecords AttendanceRecord[]
   pushSubscriptions PushSubscription[]
-  cancellationsMade Cancellation[]      @relation("CancellationCreatedBy")
-  subjectsCreated   Subject[]           @relation("SubjectCreatedBy")
+  cancellationsMade    Cancellation[]   @relation("CancellationCreatedBy")
+  subjectsCreated      Subject[]        @relation("SubjectCreatedBy")
+  announcementsMade    Announcement[]   @relation("AnnouncementCreatedBy")
+  extraLecturesMade    ExtraLecture[]   @relation("ExtraLectureCreatedBy")
 }
 
 // ---------------------------------------------------------------------------
 // SECTIONS (a class/batch, e.g. "CS 3rd Year - Section B - 2026")
 // ---------------------------------------------------------------------------
 
-model Section {
-  id                String    @id @default(uuid())
-  name              String
-  joinCode          String    @unique // students use this to enroll
-  institutionName   String?
-  // Start date of the semester - used as the lower bound when generating
-  // AttendanceRecord rows from the timetable. CR/SR can set/update this.
-  semesterStartDate DateTime? @db.Date
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+// ---------------------------------------------------------------------------
+// SECTIONS (a class/batch, e.g. DS 3rd Year)
+// ---------------------------------------------------------------------------
 
-  memberships     SectionMembership[]
-  subjects        Subject[]
-  timetableSlots  TimetableSlot[]
-  holidays        HolidayCalendar[]
-  cancellations   Cancellation[]
+enum Branch {
+  CST
+  CS
+  IT
+  AI
+  DS
+  ENC
+}
+
+enum AcademicYear {
+  First
+  Second
+  Third
+  Fourth
+}
+
+model Section {
+  id                String       @id @default(uuid())
+  branch            Branch
+  year              AcademicYear
+  institutionName   String?
+  joinCode          String       @unique
+  semesterStartDate DateTime?    @db.Date
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  memberships    SectionMembership[]
+  subjects       Subject[]
+  timetableSlots TimetableSlot[]
+  holidays       HolidayCalendar[]
+  cancellations  Cancellation[]
+  announcements  Announcement[]
+  extraLectures  ExtraLecture[]
+
+  @@unique([branch, year])
 }
 
 enum SectionRole {
@@ -92,6 +117,7 @@ model Subject {
   labSlots         TimetableLabSlot[]
   attendanceRecords AttendanceRecord[]
   cancellations    Cancellation[]
+  extraLectures    ExtraLecture[]
 
   @@index([sectionId])
 }
@@ -217,6 +243,56 @@ model AttendanceRecord {
 
   @@unique([userId, subjectId, date, timetableSlotId])
   @@index([userId, subjectId])
+}
+
+// ---------------------------------------------------------------------------
+// ANNOUNCEMENTS (notice board)
+// ---------------------------------------------------------------------------
+
+enum AnnouncementType {
+  test
+  quiz
+  assignment
+  notice
+  holiday
+}
+
+model Announcement {
+  id          String           @id @default(uuid())
+  sectionId   String
+  title       String
+  body        String?
+  type        AnnouncementType @default(notice)
+  date        DateTime         @db.Date
+  createdById String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("AnnouncementCreatedBy", fields: [createdById], references: [id])
+
+  @@index([sectionId, date])
+}
+
+// ---------------------------------------------------------------------------
+// EXTRA LECTURES (holiday/weekend classes)
+// ---------------------------------------------------------------------------
+
+model ExtraLecture {
+  id          String   @id @default(uuid())
+  sectionId   String
+  subjectId   String
+  date        DateTime @db.Date
+  reason      String?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  section   Section @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  createdBy User    @relation("ExtraLectureCreatedBy", fields: [createdById], references: [id])
+
+  @@unique([sectionId, subjectId, date])
+  @@index([sectionId])
 }
 
 // ---------------------------------------------------------------------------
