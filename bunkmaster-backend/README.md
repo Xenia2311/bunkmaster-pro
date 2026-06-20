@@ -127,6 +127,20 @@ Phase 4, by the notification flow) to `attended` / `missed`.
 **Important**: a CR/SR must set `semesterStartDate` via `PATCH /sections/:sectionId`
 before `/attendance/sync` or `/attendance/stats` will generate records.
 
+### Cancellations & Reschedule Finder (Phase 3)
+
+| Method | Route | Description | Auth |
+|--------|-------|-------------|------|
+| GET    | `/sections/:sectionId/cancellations?from=&to=` | List cancellations/reschedules in a date range | Yes (member) |
+| POST   | `/sections/:sectionId/cancellations` | Mark a lecture/lab cancelled `{date, timetableSlotId, subjectId, reason?}`. Re-syncs that date so affected `AttendanceRecord`s flip to `cancelled`. | Yes (CR/SR) |
+| GET    | `/sections/:sectionId/cancellations/:id/reschedule-options?windowDays=14` | Suggests free date+slot combos (next `windowDays` calendar days, default 14, max 60) where the cancelled lecture could be moved. Skips weekends/holidays and slots already used by another reschedule. | Yes (CR/SR) |
+| POST   | `/sections/:sectionId/cancellations/:id/reschedule` | Commit to a chosen `{date, timetableSlotId}`. Sets status to `rescheduled` and generates `AttendanceRecord`s for the new slot (whole section for lecture-type, matching batch only for lab-type). | Yes (CR/SR) |
+
+A "reschedule option" is a timetable slot that is **completely empty in the
+weekly grid** (no lecture subject, no lab subjects for any batch) on a real
+upcoming weekday that isn't a holiday and isn't already claimed by another
+reschedule.
+
 ## Auth header format
 
 All authenticated routes require:
@@ -148,8 +162,6 @@ Authorization: Bearer <JWT from login/register>
 
 ## Next phases
 
-- **Phase 3**: Cancellations & CR reschedule finder. (Note: the sync engine
-  already checks for `Cancellation` rows and marks matching records as
-  `cancelled` — Phase 3 will add the routes to create/manage these and find
-  reschedule slots.)
-- **Phase 4**: Web push notifications for attendance check-ins.
+- **Phase 4**: Web push notifications for attendance check-ins (e.g. "Did you
+  attend [Subject] just now?" -> Yes/No -> updates the matching
+  `AttendanceRecord`).
