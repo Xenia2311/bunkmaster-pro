@@ -253,7 +253,7 @@ router.patch(
         return res.status(400).json({ error: "Validation failed", details: errors.array() });
       }
 
-      const { role, batchNumber } = req.body;
+      const { role, batchNumber, rollNumber } = req.body;
       const { sectionId, userId } = req.params;
 
       const membership = await prisma.sectionMembership.findUnique({
