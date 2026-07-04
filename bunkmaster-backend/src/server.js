@@ -45,13 +45,13 @@ app.use("/sections/:sectionId/attendance",     attendanceRoutes);
 app.use("/sections/:sectionId/cancellations",  cancellationRoutes);
 app.use("/sections/:sectionId/announcements",  announcementRoutes);
 app.use("/sections/:sectionId/extra-lectures", extraLectureRoutes);
+app.use("/sections/:sectionId/bulk-import", bulkImportRoutes);
+app.use("/auth", changePasswordRoute);
 
 // 404 + error handling (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.use("/sections/:sectionId/bulk-import", bulkImportRoutes);
-app.use("/auth", changePasswordRoute);
 
 const PORT = process.env.PORT || 4000;
 
