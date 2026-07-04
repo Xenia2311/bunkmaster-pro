@@ -59,6 +59,13 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;        /* add this */
+}
+
+.member-card__top > div {
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
 }
 
 .member-card__avatar {
@@ -84,7 +91,11 @@
   margin-bottom: 2px;
 }
 
-.member-card__email { font-size: 0.65rem; }
+.member-card__email {
+  font-size: 0.65rem;
+  word-break: break-all;    /* breaks long emails onto next line */
+  overflow-wrap: anywhere;  /* ensures it wraps even without spaces */
+}
 
 .member-card__footer {
   display: flex;
