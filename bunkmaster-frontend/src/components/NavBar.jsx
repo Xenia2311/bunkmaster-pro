@@ -15,6 +15,7 @@ const NAV_ITEMS = [
 const CR_ITEMS = [
   { to: "/extra-lectures", label: "Extra",      icon: "➕"  },
   { to: "/admin",          label: "Admin",      icon: "⚙"  },
+  { to: "/bulk-import", label: "Import", icon: "⬆" },
 ];
 
 export default function NavBar() {
@@ -78,6 +79,10 @@ export default function NavBar() {
             <button className="btn btn--ghost" onClick={logout}>
               Log out
             </button>
+            <button className="btn btn--ghost navbar__sections-btn"
+            onClick={() => navigate("/change-password")}>
+            Password
+           </button>
           </div>
         </div>
       </header>

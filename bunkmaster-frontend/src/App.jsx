@@ -14,6 +14,8 @@ import Members from "./pages/Members";
 import NoticeBoard from "./pages/NoticeBoard";
 import ExtraLectures from "./pages/ExtraLectures";
 import Admin from "./pages/Admin";
+import BulkImport from "./pages/BulkImport";
+import ChangePassword from "./pages/ChangePassword";
 
 export default function App() {
   const { user } = useAuth();
@@ -41,6 +43,8 @@ export default function App() {
             <Route path="/extra-lectures" element={<ExtraLectures />} />
             <Route path="/cancellations" element={<Cancellations />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/bulk-import" element={<BulkImport />} />
+            <Route path="/change-password" element={<ChangePassword />} />
           </Route>
         </Route>
 

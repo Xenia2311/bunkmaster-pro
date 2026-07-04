@@ -14,6 +14,8 @@ const attendanceRoutes   = require("./routes/attendance");
 const cancellationRoutes = require("./routes/cancellations");
 const announcementRoutes = require("./routes/announcements");
 const extraLectureRoutes = require("./routes/extraLectures");
+const bulkImportRoutes   = require("./routes/bulkImport");
+const changePasswordRoute = require("./routes/changePassword");
 
 const app = express();
 
@@ -47,6 +49,9 @@ app.use("/sections/:sectionId/extra-lectures", extraLectureRoutes);
 // 404 + error handling (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
+
+app.use("/sections/:sectionId/bulk-import", bulkImportRoutes);
+app.use("/auth", changePasswordRoute);
 
 const PORT = process.env.PORT || 4000;
 
