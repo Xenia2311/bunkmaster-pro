@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getMembers, getReport } from "../api/attendance";
+import { updateMember } from "../api/sections";
 import "../styles/page.css";
 import "./Members.css";
 
@@ -13,7 +14,7 @@ const ROLE_META = {
 export default function Members() {
   const { activeSectionId, isClassAdmin } = useAuth();
 
-  const [tab, setTab]         = useState("directory"); // "directory" | "report"
+  const [tab, setTab]         = useState("directory");
   const [members, setMembers] = useState([]);
   const [report, setReport]   = useState(null);
   const [target, setTarget]   = useState(75);
@@ -45,13 +46,35 @@ export default function Members() {
     else loadReport();
   }, [tab, loadDirectory, loadReport]);
 
+  async function handleRollNumberSave(userId, value) {
+    setError(null);
+    try {
+      const rollNumber = value === "" ? null : Number(value);
+      const res = await updateMember(activeSectionId, userId, { rollNumber });
+      setMembers((prev) =>
+        prev
+          .map((m) => m.userId === userId ? { ...m, rollNumber: res.rollNumber } : m)
+          .sort((a, b) => {
+            if (a.rollNumber === null && b.rollNumber === null) return a.name.localeCompare(b.name);
+            if (a.rollNumber === null) return 1;
+            if (b.rollNumber === null) return -1;
+            return a.rollNumber - b.rollNumber;
+          })
+      );
+    } catch (err) { setError(err.message); }
+  }
+
   return (
     <div className="app-shell">
       <div className="page-hd">
         <div>
           <div className="eyebrow">Section</div>
           <h1>Members</h1>
-          <p>Who's in the class and how they're tracking.</p>
+          <p>
+            {isClassAdmin
+              ? "Click a roll number to edit it. Members are sorted by roll number."
+              : "Your classmates, sorted by roll number."}
+          </p>
         </div>
         {isClassAdmin && (
           <div className="members-tabs">
@@ -87,9 +110,21 @@ export default function Members() {
                       <div className="member-card__email eyebrow">{m.email}</div>
                     </div>
                   </div>
+
                   <div className="member-card__footer">
+                    {/* Roll number — editable by CR/SR */}
+                    {isClassAdmin ? (
+                      <RollNumberInput
+                        value={m.rollNumber}
+                        onSave={(val) => handleRollNumberSave(m.userId, val)}
+                      />
+                    ) : m.rollNumber ? (
+                      <span className="roll-badge">#{m.rollNumber}</span>
+                    ) : null}
+
                     <span className={`role-badge ${roleMeta.cls}`}>{roleMeta.label}</span>
-                    <span className="eyebrow">Batch {m.batchNumber}</span>
+                    <span className="eyebrow">B{m.batchNumber}</span>
+
                     {pct !== null && pct !== undefined && (
                       <span className={`stat-pill ${pct >= target ? "stat-pill--go" : "stat-pill--signal"}`}>
                         {pct}%
@@ -103,17 +138,15 @@ export default function Members() {
         )
       )}
 
-      {/* ── Attendance report (CR/SR only) ── */}
+      {/* ── Attendance report ── */}
       {tab === "report" && isClassAdmin && (
         <div className="report-section">
           <div className="report-controls">
             <div className="field" style={{ marginBottom: 0, flexDirection: "row", alignItems: "center", gap: 10 }}>
-              <label style={{ whiteSpace: "nowrap" }}>Target %</label>
-              <input
-                type="number" min="0" max="100" value={target}
+              <label>Target %</label>
+              <input type="number" min="0" max="100" value={target}
                 onChange={(e) => setTarget(Number(e.target.value) || 0)}
-                style={{ width: 72 }}
-              />
+                style={{ width: 72 }} />
             </div>
             <button className="btn btn--ghost btn--sm" onClick={loadReport} disabled={loading}>
               Refresh
@@ -127,6 +160,7 @@ export default function Members() {
               <table className="report-table">
                 <thead>
                   <tr>
+                    <th className="report-table__th">#</th>
                     <th className="report-table__th report-table__th--name">Student</th>
                     <th className="report-table__th">Overall</th>
                     {report.subjects.map((s) => (
@@ -137,9 +171,14 @@ export default function Members() {
                 <tbody>
                   {report.rows.map((row) => (
                     <tr key={row.userId} className="report-table__row">
+                      <td className="report-table__td mono text-ghost">
+                        {row.rollNumber ?? "—"}
+                      </td>
                       <td className="report-table__td report-table__td--name">
                         <div className="report-name">{row.name}</div>
-                        <div className="eyebrow report-role">{ROLE_META[row.role]?.label} · B{row.batchNumber}</div>
+                        <div className="eyebrow report-role">
+                          {ROLE_META[row.role]?.label} · B{row.batchNumber}
+                        </div>
                       </td>
                       <td className="report-table__td">
                         <PctCell pct={row.overall.percentage} target={target} />
@@ -161,14 +200,45 @@ export default function Members() {
   );
 }
 
-function PctCell({ pct, target, atRisk }) {
-  if (pct === null || pct === undefined) {
-    return <span className="eyebrow text-ghost">—</span>;
+/** Inline editable roll number input for CR/SR */
+function RollNumberInput({ value, onSave }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(value ?? "");
+
+  function handleBlur() {
+    setEditing(false);
+    const trimmed = String(draft).trim();
+    const newVal  = trimmed === "" ? null : Number(trimmed);
+    if (newVal !== value) onSave(trimmed);
   }
-  const cls = atRisk ?? (pct < target)
+
+  if (editing) {
+    return (
+      <input
+        type="number"
+        className="roll-input"
+        value={draft}
+        autoFocus
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={handleBlur}
+        onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") { setDraft(value ?? ""); setEditing(false); } }}
+        placeholder="Roll #"
+      />
+    );
+  }
+
+  return (
+    <button className={`roll-badge ${value ? "" : "roll-badge--empty"}`} onClick={() => setEditing(true)}
+      title="Click to set roll number">
+      {value ? `#${value}` : "+ Roll #"}
+    </button>
+  );
+}
+
+function PctCell({ pct, target, atRisk }) {
+  if (pct === null || pct === undefined) return <span className="eyebrow text-ghost">—</span>;
+  const cls = (atRisk ?? (pct < target))
     ? "stat-pill--signal"
-    : pct >= target + 10
-      ? "stat-pill--go"
-      : "stat-pill--caution";
+    : pct >= target + 10 ? "stat-pill--go" : "stat-pill--caution";
   return <span className={`stat-pill ${cls}`}>{pct}%</span>;
 }

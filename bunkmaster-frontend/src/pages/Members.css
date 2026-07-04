@@ -106,6 +106,40 @@
   border-top: 1px solid var(--line);
 }
 
+/* ─── Roll number ────────────────────────────────────────────── */
+.roll-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ink-3);
+  color: var(--paper);
+  border: 1px solid var(--line-3);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+.roll-badge:hover { border-color: var(--signal); background: var(--ink-2); }
+.roll-badge--empty {
+  color: var(--ghost);
+  border-style: dashed;
+  background: transparent;
+}
+
+.roll-input {
+  width: 72px;
+  background: var(--ink);
+  border: 1px solid var(--signal);
+  color: var(--paper);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  box-shadow: 0 0 0 3px var(--signal-glow);
+}
+.roll-input:focus { outline: none; }
+
 /* ─── Role badge ─────────────────────────────────────────────── */
 .role-badge {
   font-family: var(--font-mono);

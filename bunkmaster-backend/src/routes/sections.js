@@ -169,6 +169,10 @@ router.get("/:sectionId", requireAuth, requireSectionRole(null), async (req, res
       include: {
         subjects:    { orderBy: { createdAt: "asc" } },
         memberships: { include: { user: { select: { id: true, name: true, email: true } } } },
+        orderBy: [
+       { rollNumber: { sort: "asc", nulls: "last" } },
+       { user: { name: "asc" } },
+       ],
       },
     });
     if (!section) return res.status(404).json({ error: "Section not found" });
@@ -239,6 +243,7 @@ router.patch(
   [
     body("role").optional().isIn(["student", "cr", "sr"]),
     body("batchNumber").optional().isInt({ min: 1, max: 4 }),
+    body("rollNumber").optional({ nullable: true }).isInt({ min: 1 }),
   ],
   async (req, res, next) => {
     try {
@@ -260,10 +265,15 @@ router.patch(
         data: {
           ...(role        !== undefined ? { role }        : {}),
           ...(batchNumber !== undefined ? { batchNumber } : {}),
+          ...(rollNumber  !== undefined ? { rollNumber }  : {}),
         },
       });
 
-      res.json({ userId: updated.userId, role: updated.role, batchNumber: updated.batchNumber });
+      res.json({ userId: updated.userId, 
+                 role: updated.role, 
+                 batchNumber: updated.batchNumber, 
+                 rollNumber: updated.rollNumber, 
+                });
     } catch (err) {
       next(err);
     }

@@ -1,32 +1,31 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getDayAttendance, markAttendance, bulkMarkAttendance } from "../api/attendance";
-import { getMembers } from "../api/attendance";
+import { getDayAttendance, markAttendance, bulkMarkAttendance, getMembers } from "../api/attendance";
 import { getTimetable } from "../api/timetable";
 import { todayISO, formatFriendlyDate, toISODate, TIME_SLOTS } from "../utils/dates";
 import "../styles/page.css";
 import "./Today.css";
 
 const STATUS_META = {
-  attended:        { label: "Attended",   cls: "today__badge--go"      },
-  missed:          { label: "Missed",     cls: "today__badge--signal"   },
-  cancelled:       { label: "Cancelled",  cls: "today__badge--caution"  },
-  not_yet_occurred:{ label: "Upcoming",   cls: "today__badge--ghost"    },
+  attended:         { label: "Attended",  cls: "today__badge--go"     },
+  missed:           { label: "Missed",    cls: "today__badge--signal"  },
+  cancelled:        { label: "Cancelled", cls: "today__badge--caution" },
+  not_yet_occurred: { label: "Upcoming",  cls: "today__badge--ghost"   },
 };
 
 export default function Today() {
   const { activeSectionId, isClassAdmin } = useAuth();
-  const [date, setDate]     = useState(todayISO());
+  const [date, setDate]       = useState(todayISO());
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState(null);
+  const [error, setError]     = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
 
-  // CR/SR mode state
+  // CR mode
   const [crMode, setCrMode]     = useState(false);
   const [members, setMembers]   = useState([]);
   const [timetable, setTimetable] = useState([]);
-  const [bulkState, setBulkState] = useState({}); // { [userId-slotId]: "attended"|"missed" }
+  const [bulkState, setBulkState] = useState({});
   const [saving, setSaving]     = useState(false);
 
   const load = useCallback(async () => {
@@ -41,19 +40,18 @@ export default function Today() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Load CR data when switching to CR mode
   useEffect(() => {
     if (!crMode || !activeSectionId) return;
     Promise.all([
       getMembers(activeSectionId, { full: false }),
       getTimetable(activeSectionId),
     ]).then(([m, tt]) => {
+      // already sorted by roll number from backend
       setMembers(m.members);
       setTimetable(tt.timetable);
     }).catch((err) => setError(err.message));
   }, [crMode, activeSectionId]);
 
-  // Day-of-week slots for the selected date
   const dayOfWeek = (() => {
     const d = new Date(date + "T00:00:00").getDay();
     return (d === 0 || d === 6) ? null : d - 1;
@@ -80,8 +78,8 @@ export default function Today() {
           const status = bulkState[key];
           if (status) {
             entries.push({
-              userId: member.userId,
-              subjectId: slot.subject.id,
+              userId:          member.userId,
+              subjectId:       slot.subject.id,
               timetableSlotId: slot.id,
               status,
             });
@@ -96,11 +94,9 @@ export default function Today() {
     finally { setSaving(false); }
   }
 
-  function markAllSlot(slotId, subjectId, status) {
+  function markAllSlot(slotId, status) {
     const updates = {};
-    for (const m of members) {
-      updates[`${m.userId}-${slotId}`] = status;
-    }
+    for (const m of members) updates[`${m.userId}-${slotId}`] = status;
     setBulkState((prev) => ({ ...prev, ...updates }));
   }
 
@@ -136,11 +132,10 @@ export default function Today() {
 
       {error && <div className="error-banner">{error}</div>}
 
-      {/* ── Student self-check-in view ── */}
+      {/* ── Student self-check-in ── */}
       {!crMode && (
-        loading ? (
-          <p className="text-ghost">Loading schedule…</p>
-        ) : records.length === 0 ? (
+        loading ? <p className="text-ghost">Loading schedule…</p> :
+        records.length === 0 ? (
           <div className="surface today-empty">
             <h3>No classes scheduled</h3>
             <p>It's either a weekend, holiday, or nothing's on the timetable for this day.</p>
@@ -182,18 +177,18 @@ export default function Today() {
         )
       )}
 
-      {/* ── CR bulk attendance view ── */}
+      {/* ── CR bulk attendance ── */}
       {crMode && (
         <div className="cr-attendance">
           {dayOfWeek === null ? (
             <div className="surface today-empty"><h3>Weekend</h3><p>No classes on weekends.</p></div>
           ) : daySlots.length === 0 ? (
-            <div className="surface today-empty"><h3>No lectures today</h3><p>Nothing scheduled in the timetable for this day.</p></div>
+            <div className="surface today-empty"><h3>No lectures today</h3><p>Nothing scheduled for this day.</p></div>
           ) : (
             <>
               <div className="cr-attendance__header">
                 <p className="text-ghost" style={{ fontSize: "0.85rem" }}>
-                  Mark attendance for each slot. Use "All present / All absent" to fill a whole slot at once.
+                  Students sorted by roll number. Mark P (present) or A (absent) per slot.
                 </p>
                 <button className="btn btn--primary" onClick={handleBulkSave} disabled={saving}>
                   {saving ? "Saving…" : "Save attendance"}
@@ -208,8 +203,8 @@ export default function Today() {
                       <div className="eyebrow">{TIME_SLOTS[slot.slotIndex]}</div>
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button className="btn btn--sm btn--go" onClick={() => markAllSlot(slot.id, slot.subject.id, "attended")}>All present</button>
-                      <button className="btn btn--sm btn--primary" onClick={() => markAllSlot(slot.id, slot.subject.id, "missed")}>All absent</button>
+                      <button className="btn btn--sm btn--go" onClick={() => markAllSlot(slot.id, "attended")}>All present</button>
+                      <button className="btn btn--sm btn--primary" onClick={() => markAllSlot(slot.id, "missed")}>All absent</button>
                     </div>
                   </div>
                   <div className="cr-slot__members">
@@ -217,7 +212,10 @@ export default function Today() {
                       const key = `${m.userId}-${slot.id}`;
                       const val = bulkState[key] || "";
                       return (
-                        <div key={m.userId} className="cr-member">
+                        <div key={m.userId} className={`cr-member ${val === "attended" ? "cr-member--present" : val === "missed" ? "cr-member--absent" : ""}`}>
+                          <div className="cr-member__roll">
+                            {m.rollNumber ? `#${m.rollNumber}` : "—"}
+                          </div>
                           <div className="cr-member__name">{m.name}</div>
                           <div className="cr-member__btns">
                             <button

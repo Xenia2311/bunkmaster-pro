@@ -166,7 +166,10 @@ router.get(
         prisma.sectionMembership.findMany({
           where: { sectionId },
           include: { user: { select: { id: true, name: true, email: true } } },
-          orderBy: { user: { name: "asc" } },
+          orderBy: [
+         { rollNumber: { sort: "asc", nulls: "last" } },
+         { user: { name: "asc" } },
+         ],
         }),
         prisma.subject.findMany({
           where: { sectionId },
@@ -236,7 +239,10 @@ router.get(
       const memberships = await prisma.sectionMembership.findMany({
         where: { sectionId },
         include: { user: { select: { id: true, name: true, email: true } } },
-        orderBy: [{ role: "asc" }, { user: { name: "asc" } }],
+        orderBy: [
+       { rollNumber: { sort: "asc", nulls: "last" } },
+       { user: { name: "asc" } },
+       ],
       });
 
       if (!full) {

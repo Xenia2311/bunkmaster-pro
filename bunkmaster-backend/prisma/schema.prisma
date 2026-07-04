@@ -88,6 +88,7 @@ model SectionMembership {
   sectionId   String
   role        SectionRole @default(student)
   batchNumber Int         @default(0) // 0-3, which lab batch (1-4) this student belongs to
+  rollNumber  Int? 
   joinedAt    DateTime    @default(now())
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -98,13 +98,32 @@
 
 .cr-member {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   gap: 8px;
   background: var(--ink-2);
   border: 1px solid var(--line-2);
   border-radius: var(--r-sm);
   padding: 8px 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.cr-member--present {
+  border-color: rgba(41,224,140,0.4);
+  background: rgba(41,224,140,0.06);
+}
+
+.cr-member--absent {
+  border-color: rgba(255,79,43,0.4);
+  background: rgba(255,79,43,0.06);
+}
+
+.cr-member__roll {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ghost);
+  min-width: 32px;
+  flex-shrink: 0;
 }
 
 .cr-member__name {
@@ -118,6 +137,8 @@
 }
 
 .cr-member__btns { display: flex; gap: 4px; flex-shrink: 0; }
+
+
 
 @media (max-width: 640px) {
   .today-header       { flex-direction: column; align-items: flex-start; gap: 10px; }
