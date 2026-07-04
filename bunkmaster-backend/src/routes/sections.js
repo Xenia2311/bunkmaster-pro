@@ -168,12 +168,13 @@ router.get("/:sectionId", requireAuth, requireSectionRole(null), async (req, res
       where: { id: req.params.sectionId },
       include: {
         subjects:    { orderBy: { createdAt: "asc" } },
-        memberships: { include: { user: { select: { id: true, name: true, email: true } } } },
+        memberships: { include: { user: { select: { id: true, name: true, email: true } } } ,
         orderBy: [
        { rollNumber: { sort: "asc", nulls: "last" } },
        { user: { name: "asc" } },
        ],
       },
+    },
     });
     if (!section) return res.status(404).json({ error: "Section not found" });
 
