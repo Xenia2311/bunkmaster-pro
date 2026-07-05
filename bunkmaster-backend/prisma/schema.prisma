@@ -136,6 +136,7 @@ model TimetableSlot {
   slotIndex Int // 0-8
   isBreak   Boolean @default(false)
   subjectId String? // lecture for this slot (whole section)
+  
 
   section           Section            @relation(fields: [sectionId], references: [id], onDelete: Cascade)
   subject           Subject?           @relation(fields: [subjectId], references: [id])
@@ -153,6 +154,8 @@ model TimetableLabSlot {
   timetableSlotId String
   batchNumber     Int // 1-4
   subjectId       String?
+  isLabPair       Boolean @default(false)   // ← ADD
+  pairedSlotIndex Int?    
 
   timetableSlot TimetableSlot @relation(fields: [timetableSlotId], references: [id], onDelete: Cascade)
   subject       Subject?      @relation(fields: [subjectId], references: [id])

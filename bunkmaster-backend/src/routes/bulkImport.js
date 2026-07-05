@@ -10,7 +10,10 @@ const SALT_ROUNDS = 10;
 /**
  * POST /sections/:sectionId/bulk-import
  * CR/SR only: pre-register classmates and add them to the section.
- * body: { members: [{ name, email, phone }], batchNumber?: 1-4 }
+ * body: {
+ *   members: [{ name, email, phone, rollNumber? }],
+ *   batchNumber?: 1-4 (default batch for all, individual batches not yet supported here)
+ * }
  */
 router.post(
   "/",
@@ -21,6 +24,7 @@ router.post(
     body("members.*.name").trim().notEmpty(),
     body("members.*.email").isEmail().normalizeEmail(),
     body("members.*.phone").isString().trim().isLength({ min: 8, max: 15 }),
+    body("members.*.rollNumber").optional({ nullable: true }).isInt({ min: 1 }),
     body("batchNumber").optional().isInt({ min: 1, max: 4 }),
   ],
   async (req, res, next) => {
@@ -36,12 +40,13 @@ router.post(
       const results = { created: [], addedToSection: [], alreadyMember: [], failed: [] };
 
       for (const entry of members) {
-        const email = entry.email.toLowerCase().trim();
-        const name  = entry.name.trim();
-        const phone = entry.phone.trim().replace(/\s+/g, "");
+        const email      = entry.email.toLowerCase().trim();
+        const name       = entry.name.trim();
+        const phone      = entry.phone.trim().replace(/[\s\-\+]/g, "");
+        const rollNumber = entry.rollNumber ? Number(entry.rollNumber) : null;
 
         try {
-          let user = await prisma.user.findUnique({ where: { email } });
+          let user  = await prisma.user.findUnique({ where: { email } });
           let isNew = false;
 
           if (!user) {
@@ -55,16 +60,30 @@ router.post(
           });
 
           if (existing) {
+            // Update roll number if provided and not already set
+            if (rollNumber && !existing.rollNumber) {
+              await prisma.sectionMembership.update({
+                where: { userId_sectionId: { userId: user.id, sectionId } },
+                data: { rollNumber },
+              });
+            }
             results.alreadyMember.push({ name, email });
             continue;
           }
 
           await prisma.sectionMembership.create({
-            data: { userId: user.id, sectionId, role: "student", batchNumber: Number(batchNumber) },
+            data: {
+              userId:      user.id,
+              sectionId,
+              role:        "student",
+              batchNumber: Number(batchNumber),
+              rollNumber,
+            },
           });
 
-          isNew ? results.created.push({ name, email })
-                : results.addedToSection.push({ name, email });
+          isNew
+            ? results.created.push({ name, email, rollNumber })
+            : results.addedToSection.push({ name, email, rollNumber });
 
         } catch (e) {
           results.failed.push({ name, email, reason: e.message });

@@ -19,3 +19,8 @@ export function updateSection(sectionId, body) {
 export function updateMember(sectionId, userId, body) {
   return api.patch(`/sections/${sectionId}/members/${userId}`, body);
 }
+
+/** Student updates their own batch number */
+export function updateMyBatch(sectionId, userId, batchNumber) {
+  return api.patch(`/sections/${sectionId}/members/${userId}`, { batchNumber });
+}

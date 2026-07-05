@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getTimetable, updateTimetableSlot } from "../api/timetable";
 import { listSubjects } from "../api/subjects";
@@ -6,22 +6,23 @@ import { DAY_NAMES, TIME_SLOTS } from "../utils/dates";
 import "../styles/page.css";
 import "./Timetable.css";
 
-const BATCH_NUMBERS = [1, 2, 3, 4];
-
 export default function Timetable() {
   const { activeSectionId, activeMembership, isClassAdmin } = useAuth();
-  const [slots, setSlots] = useState([]);
+  const [slots, setSlots]     = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [savingKey, setSavingKey] = useState(null);
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState(null);
+  const [saved, setSaved]     = useState(false);
   const [labView, setLabView] = useState(false);
+
+  // Pending local edits: { "day-slot-lecture": subjectId, "day-slot-lab-B1": subjectId, "day-slot-labpair-B1": true }
+  const [pending, setPending] = useState({});
   const myBatch = activeMembership?.batchNumber || 1;
 
   const load = useCallback(async () => {
     if (!activeSectionId) return;
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
       const [tt, subs] = await Promise.all([
         getTimetable(activeSectionId),
@@ -29,52 +30,103 @@ export default function Timetable() {
       ]);
       setSlots(tt.timetable);
       setSubjects(subs.subjects);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+      setPending({});
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   }, [activeSectionId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   function getSlot(dayOfWeek, slotIndex) {
     return slots.find((s) => s.dayOfWeek === dayOfWeek && s.slotIndex === slotIndex);
   }
 
-  async function handleLectureChange(slot, subjectId) {
-    const key = `${slot.dayOfWeek}-${slot.slotIndex}-lecture`;
-    setSavingKey(key);
-    setError(null);
+  // ── Local change handlers (no API call yet) ──
+  function setLecture(dayOfWeek, slotIndex, subjectId) {
+    setPending((p) => ({ ...p, [`${dayOfWeek}-${slotIndex}-lecture`]: subjectId }));
+  }
+
+  function setLab(dayOfWeek, slotIndex, batchNumber, subjectId) {
+    setPending((p) => ({ ...p, [`${dayOfWeek}-${slotIndex}-lab-B${batchNumber}`]: subjectId }));
+  }
+
+  function setLabPair(dayOfWeek, slotIndex, batchNumber, isPair) {
+    setPending((p) => ({ ...p, [`${dayOfWeek}-${slotIndex}-labpair-B${batchNumber}`]: isPair }));
+  }
+
+  // ── Resolve current value: pending overrides server state ──
+  function getLectureValue(dayOfWeek, slotIndex) {
+    const key = `${dayOfWeek}-${slotIndex}-lecture`;
+    if (key in pending) return pending[key];
+    return getSlot(dayOfWeek, slotIndex)?.subject?.id || "";
+  }
+
+  function getLabValue(dayOfWeek, slotIndex, batchNumber) {
+    const key = `${dayOfWeek}-${slotIndex}-lab-B${batchNumber}`;
+    if (key in pending) return pending[key];
+    const slot = getSlot(dayOfWeek, slotIndex);
+    return slot?.labSlots?.find((l) => l.batchNumber === batchNumber)?.subject?.id || "";
+  }
+
+  function getLabPairValue(dayOfWeek, slotIndex, batchNumber) {
+    const key = `${dayOfWeek}-${slotIndex}-labpair-B${batchNumber}`;
+    if (key in pending) return pending[key];
+    const slot = getSlot(dayOfWeek, slotIndex);
+    return slot?.labSlots?.find((l) => l.batchNumber === batchNumber)?.isLabPair || false;
+  }
+
+  // ── Save all pending changes ──
+  async function handleSaveAll() {
+    if (Object.keys(pending).length === 0) return;
+    setSaving(true); setError(null);
     try {
-      await updateTimetableSlot(activeSectionId, slot.dayOfWeek, slot.slotIndex, {
-        subjectId: subjectId || null,
-      });
+      // Group pending changes by day-slot
+      const slotChanges = {};
+      for (const [key, value] of Object.entries(pending)) {
+        const parts = key.split("-");
+        const dayOfWeek  = Number(parts[0]);
+        const slotIndex  = Number(parts[1]);
+        const slotKey    = `${dayOfWeek}-${slotIndex}`;
+        if (!slotChanges[slotKey]) slotChanges[slotKey] = { dayOfWeek, slotIndex, labs: {} };
+
+        if (parts[2] === "lecture") {
+          slotChanges[slotKey].subjectId = value || null;
+        } else if (parts[2] === "lab") {
+          const bn = Number(parts[3].replace("B", ""));
+          if (!slotChanges[slotKey].labs[bn]) slotChanges[slotKey].labs[bn] = {};
+          slotChanges[slotKey].labs[bn].subjectId = value || null;
+        } else if (parts[2] === "labpair") {
+          const bn = Number(parts[3].replace("B", ""));
+          if (!slotChanges[slotKey].labs[bn]) slotChanges[slotKey].labs[bn] = {};
+          slotChanges[slotKey].labs[bn].isLabPair = value;
+        }
+      }
+
+      // Fire API calls for each modified slot
+      for (const change of Object.values(slotChanges)) {
+        const body = {};
+        if ("subjectId" in change) body.subjectId = change.subjectId;
+        if (Object.keys(change.labs).length > 0) {
+          body.labAssignments = Object.entries(change.labs).map(([bn, lab]) => ({
+            batchNumber: Number(bn),
+            subjectId:   lab.subjectId !== undefined ? lab.subjectId : null,
+            isLabPair:   lab.isLabPair !== undefined ? lab.isLabPair : undefined,
+          }));
+        }
+        await updateTimetableSlot(activeSectionId, change.dayOfWeek, change.slotIndex, body);
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
       await load();
     } catch (err) {
       setError(err.message);
     } finally {
-      setSavingKey(null);
+      setSaving(false);
     }
   }
 
-  async function handleLabChange(slot, batchNumber, subjectId) {
-    const key = `${slot.dayOfWeek}-${slot.slotIndex}-lab-${batchNumber}`;
-    setSavingKey(key);
-    setError(null);
-    try {
-      await updateTimetableSlot(activeSectionId, slot.dayOfWeek, slot.slotIndex, {
-        labAssignments: [{ batchNumber, subjectId: subjectId || null }],
-      });
-      await load();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setSavingKey(null);
-    }
-  }
+  const hasPending = Object.keys(pending).length > 0;
 
   return (
     <div className="app-shell">
@@ -84,124 +136,149 @@ export default function Timetable() {
           <h1>Timetable</h1>
           <p>
             {isClassAdmin
-              ? "Edit lectures and lab assignments. Changes apply to the whole section."
-              : `Showing lab assignments for Batch ${myBatch}. Toggle below to see all batches.`}
+              ? "Make all your changes then click Save — no waiting between slots."
+              : `Viewing Batch ${myBatch} labs. Toggle to see all batches.`}
           </p>
         </div>
-        <label className="timetable__toggle">
-          <input type="checkbox" checked={labView} onChange={(e) => setLabView(e.target.checked)} />
-          Show all lab batches
-        </label>
+        <div className="timetable-topbar__right">
+          <label className="timetable__toggle">
+            <input type="checkbox" checked={labView} onChange={(e) => setLabView(e.target.checked)} />
+            All batches
+          </label>
+          {isClassAdmin && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {hasPending && (
+                <button className="btn btn--ghost btn--sm" onClick={() => { setPending({}); }}>
+                  Discard
+                </button>
+              )}
+              <button
+                className={`btn btn--sm ${saved ? "btn--go" : "btn--primary"}`}
+                onClick={handleSaveAll}
+                disabled={saving || !hasPending}
+              >
+                {saving ? "Saving…" : saved ? "✓ Saved!" : `Save${hasPending ? ` (${Object.keys(pending).length} changes)` : ""}`}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {error && <div className="error-banner">{error}</div>}
 
+      {hasPending && (
+        <div className="timetable-unsaved-banner">
+          You have unsaved changes — click Save when done editing.
+        </div>
+      )}
+
       {loading ? (
-        <p className="text-ghost">Loading timetable...</p>
+        <p className="text-ghost">Loading timetable…</p>
       ) : (
         <div className="timetable-scroll">
           <div className="timetable-grid">
             <div className="timetable-grid__corner" />
             {TIME_SLOTS.map((t, idx) => (
-              <div key={idx} className="timetable-grid__time eyebrow">
-                {t}
-              </div>
+              <div key={idx} className="timetable-grid__time eyebrow">{t}</div>
             ))}
 
             {DAY_NAMES.map((day, dayOfWeek) => (
-              <FragmentRow
+              <TimetableRow
                 key={day}
                 day={day}
                 dayOfWeek={dayOfWeek}
-                getSlot={getSlot}
                 subjects={subjects}
                 isClassAdmin={isClassAdmin}
                 labView={labView}
                 myBatch={myBatch}
-                savingKey={savingKey}
-                onLectureChange={handleLectureChange}
-                onLabChange={handleLabChange}
+                getLectureValue={getLectureValue}
+                getLabValue={getLabValue}
+                getLabPairValue={getLabPairValue}
+                onLectureChange={setLecture}
+                onLabChange={setLab}
+                onLabPairChange={setLabPair}
+                getSlot={(si) => getSlot(dayOfWeek, si)}
               />
             ))}
           </div>
         </div>
       )}
+
+      {isClassAdmin && (
+        <p className="text-ghost" style={{ fontSize: "0.78rem", marginTop: 12 }}>
+          💡 Lab pair = 2 consecutive slots counted as 1 attendance. Check "Pair" on the first slot for each batch.
+        </p>
+      )}
     </div>
   );
 }
 
-function FragmentRow({
-  day,
-  dayOfWeek,
-  getSlot,
-  subjects,
-  isClassAdmin,
-  labView,
-  myBatch,
-  savingKey,
-  onLectureChange,
-  onLabChange,
+function TimetableRow({
+  day, dayOfWeek, subjects, isClassAdmin, labView, myBatch,
+  getLectureValue, getLabValue, getLabPairValue,
+  onLectureChange, onLabChange, onLabPairChange, getSlot,
 }) {
   return (
     <>
       <div className="timetable-grid__day eyebrow">{day}</div>
-      {TIME_SLOTS.map((_, slotIndex) => {
-        const slot = getSlot(dayOfWeek, slotIndex);
+      {Array.from({ length: 9 }, (_, slotIndex) => {
+        const slot = getSlot(slotIndex);
         if (!slot) return <div key={slotIndex} className="timetable-grid__cell timetable-grid__cell--empty" />;
-        if (slot.isBreak) {
-          return (
-            <div key={slotIndex} className="timetable-grid__cell timetable-grid__cell--break">
-              <span>☕</span>
-            </div>
-          );
-        }
+        if (slot.isBreak) return (
+          <div key={slotIndex} className="timetable-grid__cell timetable-grid__cell--break">☕</div>
+        );
 
-        const lectureKey = `${dayOfWeek}-${slotIndex}-lecture`;
+        const lectureVal = getLectureValue(dayOfWeek, slotIndex);
 
         return (
           <div key={slotIndex} className="timetable-grid__cell">
+            {/* Lecture assignment */}
             {isClassAdmin ? (
               <select
-                value={slot.subject?.id || ""}
-                onChange={(e) => onLectureChange(slot, e.target.value)}
-                disabled={savingKey === lectureKey}
+                value={lectureVal}
+                onChange={(e) => onLectureChange(dayOfWeek, slotIndex, e.target.value)}
                 className="timetable-grid__select"
               >
-                <option value="">—</option>
-                {subjects.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
+                <option value="">— Lecture —</option>
+                {subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             ) : (
-              <div className="timetable-grid__lecture">{slot.subject?.name || "—"}</div>
+              <div className="timetable-grid__lecture">
+                {subjects.find((s) => s.id === lectureVal)?.name || "—"}
+              </div>
             )}
 
+            {/* Lab assignments */}
             {labView ? (
               <div className="timetable-grid__labs">
-                {[1, 2, 3, 4].map((batchNumber) => {
-                  const labSlot = slot.labSlots.find((l) => l.batchNumber === batchNumber);
-                  const labKey = `${dayOfWeek}-${slotIndex}-lab-${batchNumber}`;
+                {[1,2,3,4].map((bn) => {
+                  const labVal    = getLabValue(dayOfWeek, slotIndex, bn);
+                  const isPair    = getLabPairValue(dayOfWeek, slotIndex, bn);
                   return isClassAdmin ? (
-                    <select
-                      key={batchNumber}
-                      value={labSlot?.subject?.id || ""}
-                      onChange={(e) => onLabChange(slot, batchNumber, e.target.value)}
-                      disabled={savingKey === labKey}
-                      className="timetable-grid__select timetable-grid__select--lab"
-                      title={`Batch ${batchNumber}`}
-                    >
-                      <option value="">B{batchNumber}: —</option>
-                      {subjects.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          B{batchNumber}: {s.name}
-                        </option>
-                      ))}
-                    </select>
+                    <div key={bn} className="timetable-grid__lab-row">
+                      <select
+                        value={labVal}
+                        onChange={(e) => onLabChange(dayOfWeek, slotIndex, bn, e.target.value)}
+                        className="timetable-grid__select timetable-grid__select--lab"
+                      >
+                        <option value="">B{bn}: —</option>
+                        {subjects.map((s) => <option key={s.id} value={s.id}>B{bn}: {s.name}</option>)}
+                      </select>
+                      {labVal && (
+                        <label className="timetable-grid__pair-label" title="Mark as 2-hour lab (counts as 1 attendance)">
+                          <input
+                            type="checkbox"
+                            checked={isPair}
+                            onChange={(e) => onLabPairChange(dayOfWeek, slotIndex, bn, e.target.checked)}
+                          />
+                          <span>Pair</span>
+                        </label>
+                      )}
+                    </div>
                   ) : (
-                    <div key={batchNumber} className="timetable-grid__lab-readonly">
-                      B{batchNumber}: {labSlot?.subject?.name || "—"}
+                    <div key={bn} className={`timetable-grid__lab-readonly ${bn === myBatch ? "timetable-grid__lab-readonly--mine" : ""}`}>
+                      B{bn}: {subjects.find((s) => s.id === labVal)?.name || "—"}
+                      {isPair && <span className="timetable-grid__pair-badge">2h</span>}
                     </div>
                   );
                 })}
@@ -209,10 +286,12 @@ function FragmentRow({
             ) : (
               <div className="timetable-grid__labs">
                 {(() => {
-                  const myLab = slot.labSlots.find((l) => l.batchNumber === myBatch);
+                  const labVal = getLabValue(dayOfWeek, slotIndex, myBatch);
+                  const isPair = getLabPairValue(dayOfWeek, slotIndex, myBatch);
                   return (
-                    <div className="timetable-grid__lab-readonly">
-                      Lab: {myLab?.subject?.name || "—"}
+                    <div className="timetable-grid__lab-readonly timetable-grid__lab-readonly--mine">
+                      {subjects.find((s) => s.id === labVal)?.name || "—"}
+                      {isPair && <span className="timetable-grid__pair-badge">2h</span>}
                     </div>
                   );
                 })()}

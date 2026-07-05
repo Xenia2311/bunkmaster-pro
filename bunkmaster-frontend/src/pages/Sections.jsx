@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { createSection, joinSection } from "../api/sections";
+import { createSection, joinSection, updateMyBatch } from "../api/sections";
 import { ApiError } from "../api/client";
 import "./Sections.css";
 
 const BRANCHES = ["CST", "CS", "IT", "AI", "DS", "ENC"];
-const YEARS    = [
+const YEARS = [
   { value: "First",  label: "1st Year" },
   { value: "Second", label: "2nd Year" },
   { value: "Third",  label: "3rd Year" },
@@ -14,29 +14,33 @@ const YEARS    = [
 ];
 
 export default function Sections() {
-  const { memberships, refreshMe, switchSection, activeSectionId } = useAuth();
+  const { memberships, user, refreshMe, switchSection, activeSectionId } = useAuth();
   const navigate = useNavigate();
 
-  const [mode, setMode]         = useState("join");
-  const [error, setError]       = useState(null);
-  const [success, setSuccess]   = useState(null);
+  const [mode, setMode]       = useState("join");
+  const [error, setError]     = useState(null);
+  const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Join form
-  const [joinCode, setJoinCode]         = useState("");
-  const [batchNumber, setBatchNumber]   = useState("1");
+  const [joinCode, setJoinCode]       = useState("");
+  const [batchNumber, setBatchNumber] = useState("1");
 
   // Create form
-  const [branch, setBranch]             = useState("");
-  const [year, setYear]                 = useState("");
+  const [branch, setBranch]                   = useState("");
+  const [year, setYear]                       = useState("");
   const [institutionName, setInstitutionName] = useState("");
+
+  // Batch change
+  const [changingBatchFor, setChangingBatchFor] = useState(null); // sectionId
+  const [newBatch, setNewBatch]                 = useState("1");
 
   async function handleJoin(e) {
     e.preventDefault();
     setError(null); setSuccess(null); setSubmitting(true);
     try {
       const res = await joinSection({
-        joinCode: joinCode.trim().toUpperCase(),
+        joinCode:    joinCode.trim().toUpperCase(),
         batchNumber: Number(batchNumber),
       });
       await refreshMe();
@@ -64,6 +68,18 @@ export default function Sections() {
     } finally { setSubmitting(false); }
   }
 
+  async function handleBatchChange(sectionId) {
+    setError(null); setSuccess(null); setSubmitting(true);
+    try {
+      await updateMyBatch(sectionId, user.id, Number(newBatch));
+      await refreshMe();
+      setChangingBatchFor(null);
+      setSuccess("Batch updated successfully.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Could not update batch.");
+    } finally { setSubmitting(false); }
+  }
+
   return (
     <div className="app-shell">
       <div className="eyebrow">Classes</div>
@@ -80,28 +96,57 @@ export default function Sections() {
               key={m.sectionId}
               className={`section-list__item${m.sectionId === activeSectionId ? " section-list__item--active" : ""}`}
             >
-              <div>
+              <div className="section-list__info">
                 <div className="section-list__name">{m.section.name}</div>
                 <div className="eyebrow">
-                  {m.role.toUpperCase()} · Batch {m.batchNumber} · Code:{" "}
-                  <span className="mono">{m.section.joinCode}</span>
+                  {m.role.toUpperCase()} · Batch {m.batchNumber}
+                  {m.rollNumber ? ` · #${m.rollNumber}` : ""}
+                  {" · "}Code: <span className="mono">{m.section.joinCode}</span>
                 </div>
-                {m.section.institutionName && (
-                  <div className="eyebrow" style={{ marginTop: 2 }}>
-                    {m.section.institutionName}
+              </div>
+
+              <div className="section-list__actions">
+                {/* Batch change (students only — CR/SR don't need to self-change) */}
+                {m.role === "student" && changingBatchFor === m.sectionId ? (
+                  <div className="batch-change">
+                    <select
+                      value={newBatch}
+                      onChange={(e) => setNewBatch(e.target.value)}
+                      className="batch-change__select"
+                    >
+                      {[1,2,3,4].map((b) => (
+                        <option key={b} value={b}>Batch {b}</option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn btn--go btn--sm"
+                      onClick={() => handleBatchChange(m.sectionId)}
+                      disabled={submitting}
+                    >Save</button>
+                    <button
+                      className="btn btn--ghost btn--sm"
+                      onClick={() => setChangingBatchFor(null)}
+                    >✕</button>
                   </div>
+                ) : (
+                  <>
+                    {m.role === "student" && (
+                      <button
+                        className="btn btn--ghost btn--sm"
+                        onClick={() => { setChangingBatchFor(m.sectionId); setNewBatch(String(m.batchNumber)); }}
+                      >Change batch</button>
+                    )}
+                    {m.sectionId === activeSectionId ? (
+                      <span className="eyebrow text-go">Active</span>
+                    ) : (
+                      <button
+                        className="btn btn--ghost btn--sm"
+                        onClick={() => { switchSection(m.sectionId); navigate("/"); }}
+                      >Switch</button>
+                    )}
+                  </>
                 )}
               </div>
-              {m.sectionId === activeSectionId ? (
-                <span className="eyebrow text-go">Active</span>
-              ) : (
-                <button
-                  className="btn btn--ghost btn--sm"
-                  onClick={() => { switchSection(m.sectionId); navigate("/"); }}
-                >
-                  Switch
-                </button>
-              )}
             </div>
           ))}
         </div>
@@ -168,12 +213,12 @@ export default function Sections() {
 
           {branch && year && (
             <div className="sections-create__preview surface--raised">
-              <div className="eyebrow">This will create</div>
+              <div className="eyebrow" style={{ marginBottom: 8 }}>This will create</div>
               <div className="sections-create__preview-name">
                 {branch} {YEARS.find((y) => y.value === year)?.label}
               </div>
               <p style={{ fontSize: "0.82rem", marginTop: 4 }}>
-                Only one class can exist per branch and year. If this class already exists, join it using the join code instead.
+                Only one class can exist per branch and year. If this class already exists, join it with the join code instead.
               </p>
             </div>
           )}
@@ -188,7 +233,7 @@ export default function Sections() {
           </div>
 
           <p className="text-ghost" style={{ fontSize: "0.82rem", marginBottom: 16 }}>
-            You'll become the Class Representative (CR) and get a join code to share with your classmates.
+            You'll become the Class Representative (CR) and get a join code to share.
           </p>
           <button className="btn btn--primary" type="submit" disabled={submitting || !branch || !year}>
             {submitting ? "Creating…" : "Create class"}

@@ -100,18 +100,17 @@ router.put(
         if (labAssignments) {
           for (const la of labAssignments) {
             await tx.timetableLabSlot.upsert({
-              where: {
-                timetableSlotId_batchNumber: {
-                  timetableSlotId: slot.id,
-                  batchNumber: la.batchNumber,
-                },
-              },
-              update: { subjectId: la.subjectId ?? null },
-              create: {
-                timetableSlotId: slot.id,
-                batchNumber: la.batchNumber,
-                subjectId: la.subjectId ?? null,
-              },
+             where: { timetableSlotId_batchNumber: { timetableSlotId: slot.id, batchNumber: la.batchNumber } },
+             update: {
+             subjectId:  la.subjectId ?? null,
+             ...(la.isLabPair !== undefined ? { isLabPair: la.isLabPair } : {}),
+             },
+             create: {
+             timetableSlotId: slot.id,
+             batchNumber:     la.batchNumber,
+             subjectId:       la.subjectId ?? null,
+             isLabPair:       la.isLabPair ?? false,
+             },
             });
           }
         }

@@ -6,30 +6,44 @@ import "./BulkImport.css";
 
 /**
  * Parse pasted text into member rows.
- * Accepts formats:
- *   Name, email, phone       (comma separated)
- *   Name  email  phone       (tab or multiple spaces)
- *   Name | email | phone     (pipe separated)
+ * Accepts: Name, email, phone[, rollNo]
+ * Separators: comma, tab, pipe
  */
 function parseInput(text) {
-  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines   = text.split("\n").map((l) => l.trim()).filter(Boolean);
   const members = [];
   const errors  = [];
 
   lines.forEach((line, i) => {
-    // Try comma, tab, pipe as separator
     const parts = line.split(/,|\t|\|/).map((p) => p.trim());
     if (parts.length < 3) {
-      errors.push(`Line ${i + 1}: needs 3 fields (name, email, phone) — got "${line}"`);
+      errors.push(`Line ${i + 1}: needs at least 3 fields (name, email, phone) — got "${line}"`);
       return;
     }
-    const [name, email, phone] = parts;
+    const [name, email, phone, rollNoRaw] = parts;
     if (!name)  { errors.push(`Line ${i + 1}: name is empty`); return; }
     if (!email.includes("@")) { errors.push(`Line ${i + 1}: "${email}" doesn't look like an email`); return; }
-    if (!/^\d{8,15}$/.test(phone.replace(/[\s\-\+]/g, ""))) {
+    const cleanPhone = phone.replace(/[\s\-\+]/g, "");
+    if (!/^\d{8,15}$/.test(cleanPhone)) {
       errors.push(`Line ${i + 1}: "${phone}" doesn't look like a phone number`); return;
     }
-    members.push({ name, email: email.toLowerCase(), phone: phone.replace(/[\s\-\+]/g, "") });
+
+    let rollNumber = null;
+    if (rollNoRaw && rollNoRaw.trim() !== "") {
+      const parsed = parseInt(rollNoRaw.trim(), 10);
+      if (isNaN(parsed) || parsed < 1) {
+        errors.push(`Line ${i + 1}: roll number "${rollNoRaw}" is not a valid positive integer`);
+        return;
+      }
+      rollNumber = parsed;
+    }
+
+    members.push({
+      name,
+      email:      email.toLowerCase(),
+      phone:      cleanPhone,
+      rollNumber,
+    });
   });
 
   return { members, errors };
@@ -37,12 +51,12 @@ function parseInput(text) {
 
 export default function BulkImport() {
   const { activeSectionId, isClassAdmin } = useAuth();
-  const [text, setText]         = useState("");
-  const [preview, setPreview]   = useState(null);  // { members, errors }
+  const [text, setText]               = useState("");
+  const [preview, setPreview]         = useState(null);
   const [batchNumber, setBatchNumber] = useState("1");
-  const [result, setResult]     = useState(null);
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState(null);
+  const [result, setResult]           = useState(null);
+  const [loading, setLoading]         = useState(false);
+  const [error, setError]             = useState(null);
 
   if (!isClassAdmin) {
     return (
@@ -58,8 +72,7 @@ export default function BulkImport() {
   function handlePreview() {
     setError(null); setResult(null);
     if (!text.trim()) { setError("Paste your member list first."); return; }
-    const parsed = parseInput(text);
-    setPreview(parsed);
+    setPreview(parseInput(text));
   }
 
   async function handleImport() {
@@ -80,44 +93,52 @@ export default function BulkImport() {
     }
   }
 
+  const hasRollNumbers = preview?.members.some((m) => m.rollNumber !== null);
+
   return (
     <div className="app-shell">
       <div className="eyebrow">Admin</div>
       <h1 className="page-title">Import classmates</h1>
       <p className="page-sub">
         Pre-register your whole class at once. Each person gets an account with their
-        phone number as the default password — they can change it anytime after logging in.
+        phone number as the default password. Roll number is optional — add it as a 4th column.
       </p>
 
       {error && <div className="error-banner">{error}</div>}
 
       {/* ── Success result ── */}
       {result && (
-        <div className="bi-result">
-          <div className="bi-result__hero">
-            <div className="bi-result__num text-go">{result.summary.created}</div>
-            <div className="eyebrow">New accounts created</div>
-          </div>
-          <div className="bi-result__hero">
-            <div className="bi-result__num text-caution">{result.summary.addedToSection}</div>
-            <div className="eyebrow">Existing accounts added</div>
-          </div>
-          <div className="bi-result__hero">
-            <div className="bi-result__num text-ghost">{result.summary.alreadyMember}</div>
-            <div className="eyebrow">Already in class</div>
-          </div>
-          {result.summary.failed > 0 && (
+        <>
+          <div className="bi-result">
             <div className="bi-result__hero">
-              <div className="bi-result__num text-signal">{result.summary.failed}</div>
-              <div className="eyebrow">Failed</div>
+              <div className="bi-result__num text-go">{result.summary.created}</div>
+              <div className="eyebrow">New accounts created</div>
             </div>
-          )}
-        </div>
+            <div className="bi-result__hero">
+              <div className="bi-result__num text-caution">{result.summary.addedToSection}</div>
+              <div className="eyebrow">Existing accounts added</div>
+            </div>
+            <div className="bi-result__hero">
+              <div className="bi-result__num text-ghost">{result.summary.alreadyMember}</div>
+              <div className="eyebrow">Already in class</div>
+            </div>
+            {result.summary.failed > 0 && (
+              <div className="bi-result__hero">
+                <div className="bi-result__num text-signal">{result.summary.failed}</div>
+                <div className="eyebrow">Failed</div>
+              </div>
+            )}
+          </div>
+          <button className="btn btn--ghost" style={{ marginBottom: 24 }}
+            onClick={() => setResult(null)}>
+            Import more
+          </button>
+        </>
       )}
 
       {result?.details?.failed?.length > 0 && (
-        <div className="error-banner" style={{ marginTop: 12 }}>
-          Failed entries:
+        <div className="error-banner" style={{ marginBottom: 16 }}>
+          <strong>Failed entries:</strong>
           {result.details.failed.map((f, i) => (
             <div key={i} className="mono" style={{ fontSize: "0.8rem", marginTop: 4 }}>
               {f.name} ({f.email}) — {f.reason}
@@ -131,15 +152,15 @@ export default function BulkImport() {
         <div className="surface bi-paste-card">
           <h3>Paste your class list</h3>
           <p style={{ marginBottom: 16 }}>
-            One person per line. Separate fields with a comma, tab, or pipe (|).
-            Format: <span className="mono">Name, email, phone</span>
+            One person per line. Separate with comma, tab, or pipe (|).
+            Roll number is optional as a 4th column.
           </p>
 
           <div className="bi-example surface--raised">
-            <div className="eyebrow" style={{ marginBottom: 8 }}>Example</div>
-            <div className="mono bi-example__line">Xenia Bhardwaj, xenia@college.edu, 9876543210</div>
-            <div className="mono bi-example__line">Rohan Mehta, rohan@college.edu, 9123456789</div>
-            <div className="mono bi-example__line">Priya Singh, priya@college.edu, 9988776655</div>
+            <div className="eyebrow" style={{ marginBottom: 8 }}>Format (roll number optional)</div>
+            <div className="mono bi-example__line">Rohan Mehta, rohan@college.edu, 9876543210, 1</div>
+            <div className="mono bi-example__line">Priya Singh, priya@college.edu, 9988776655, 2</div>
+            <div className="mono bi-example__line">Arjun Nair, arjun@college.edu, 9123456789</div>
           </div>
 
           <div className="field" style={{ marginTop: 20 }}>
@@ -147,20 +168,17 @@ export default function BulkImport() {
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={"Name, email@example.com, 9876543210\nName 2, email2@example.com, 9876543211"}
-              rows={10}
+              placeholder={"Name, email@example.com, 9876543210, rollNumber\n..."}
+              rows={12}
               className="bi-textarea"
             />
           </div>
 
           <div className="field" style={{ marginBottom: 20 }}>
-            <label>Default lab batch for all imported members</label>
+            <label>Default lab batch (for members without one specified)</label>
             <select value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)}>
               {[1,2,3,4].map((b) => <option key={b} value={b}>Batch {b}</option>)}
             </select>
-            <span className="eyebrow" style={{ marginTop: 4 }}>
-              You can change individual batches later from the Members page.
-            </span>
           </div>
 
           <button className="btn btn--primary" onClick={handlePreview} disabled={!text.trim()}>
@@ -186,14 +204,8 @@ export default function BulkImport() {
               <div className="bi-preview__header">
                 <h3>{preview.members.length} members ready to import</h3>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button className="btn btn--ghost" onClick={() => setPreview(null)}>
-                    ← Edit list
-                  </button>
-                  <button
-                    className="btn btn--primary"
-                    onClick={handleImport}
-                    disabled={loading}
-                  >
+                  <button className="btn btn--ghost" onClick={() => setPreview(null)}>← Edit</button>
+                  <button className="btn btn--primary" onClick={handleImport} disabled={loading}>
                     {loading ? "Importing…" : `Import ${preview.members.length} members`}
                   </button>
                 </div>
@@ -207,6 +219,7 @@ export default function BulkImport() {
                       <th className="bi-table__th">Name</th>
                       <th className="bi-table__th">Email</th>
                       <th className="bi-table__th">Phone (password)</th>
+                      {hasRollNumbers && <th className="bi-table__th">Roll No</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -216,9 +229,13 @@ export default function BulkImport() {
                         <td className="bi-table__td">{m.name}</td>
                         <td className="bi-table__td mono">{m.email}</td>
                         <td className="bi-table__td mono">
-                          {"•".repeat(Math.min(m.phone.length, 6))}
-                          {m.phone.slice(-4)}
+                          {"•".repeat(Math.min(m.phone.length - 4, 6))}{m.phone.slice(-4)}
                         </td>
+                        {hasRollNumbers && (
+                          <td className="bi-table__td mono">
+                            {m.rollNumber ?? <span className="text-ghost">—</span>}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -226,8 +243,7 @@ export default function BulkImport() {
               </div>
 
               <p className="text-ghost" style={{ fontSize: "0.8rem", marginTop: 12 }}>
-                Each person's phone number will be their initial password.
-                They can log in at any time and change it from their profile.
+                Phone number = initial password. Students can change it anytime after logging in.
               </p>
             </>
           ) : (
