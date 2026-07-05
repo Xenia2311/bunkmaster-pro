@@ -6,35 +6,33 @@
   gap: 12px;
   margin-bottom: 24px;
 }
+.timetable-topbar h1 { font-size: 2rem; margin: 4px 0 6px; }
+.timetable-topbar p  { font-size: 0.88rem; }
 
 .timetable-topbar__right {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
-
-.timetable-topbar h1 { font-size: 2rem; margin: 4px 0 6px; }
-.timetable-topbar p  { font-size: 0.88rem; }
 
 .timetable__toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-family: var(--font-mono);
   font-size: 0.7rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ghost);
   cursor: pointer;
-  flex-shrink: 0;
 }
 
-/* ─── Unsaved changes banner ─────────────────────────────────── */
-
+/* ─── Unsaved banner ─────────────────────────────────────────── */
 .timetable-unsaved-banner {
-  background: rgba(255,187,51,0.1);
-  border: 1px solid rgba(255,187,51,0.35);
+  background: rgba(255,187,51,0.08);
+  border: 1px solid rgba(255,187,51,0.3);
   color: var(--caution);
   border-radius: var(--r-sm);
   padding: 10px 14px;
@@ -42,13 +40,14 @@
   margin-bottom: 16px;
 }
 
+/* ─── Grid ───────────────────────────────────────────────────── */
 .timetable-scroll { overflow-x: auto; padding-bottom: 8px; }
 
 .timetable-grid {
   display: grid;
-  grid-template-columns: 64px repeat(9, minmax(120px, 1fr));
+  grid-template-columns: 64px repeat(9, minmax(130px, 1fr));
   gap: 5px;
-  min-width: 800px;
+  min-width: 880px;
 }
 
 .timetable-grid__corner {}
@@ -58,9 +57,8 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: var(--ghost);
-  letter-spacing: 0.05em;
   padding: 6px 4px;
   text-align: center;
 }
@@ -90,10 +88,8 @@
 }
 .timetable-grid__cell:hover { border-color: var(--line-3); }
 
-.timetable-grid__cell--empty {
-  background: transparent;
-  border: none;
-}
+.timetable-grid__cell--empty { background: transparent; border: none; }
+
 .timetable-grid__cell--break {
   align-items: center;
   justify-content: center;
@@ -101,6 +97,14 @@
   font-size: 1.1rem;
 }
 
+/* Continuation slot: visually locked */
+.timetable-grid__cell--continuation {
+  background: rgba(255,187,51,0.04);
+  border-color: rgba(255,187,51,0.2);
+  border-style: dashed;
+}
+
+/* ─── Selects ────────────────────────────────────────────────── */
 .timetable-grid__select {
   background: var(--ink);
   border: 1px solid var(--line-2);
@@ -112,8 +116,9 @@
   transition: border-color 0.15s;
 }
 .timetable-grid__select:focus { border-color: var(--signal); outline: none; }
-.timetable-grid__select--lab  { font-size: 0.65rem; padding: 3px 5px; color: var(--ghost-2); }
+.timetable-grid__select--lab  { font-size: 0.65rem; padding: 3px 5px; }
 
+/* ─── Lecture label ──────────────────────────────────────────── */
 .timetable-grid__lecture {
   font-family: var(--font-display);
   font-weight: 600;
@@ -121,32 +126,51 @@
   color: var(--paper);
 }
 
-.timetable-grid__labs { display: flex; flex-direction: column; gap: 2px; }
+/* ─── Lab section ────────────────────────────────────────────── */
+.timetable-grid__labs { display: flex; flex-direction: column; gap: 4px; }
 
-.timetable-grid__lab-row {
+.timetable-grid__lab-block {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column;
+  gap: 2px;
 }
 
+/* 2h lab checkbox label */
 .timetable-grid__pair-label {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.6rem;
   color: var(--caution);
   cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
+  padding: 2px 0;
+  user-select: none;
+}
+.timetable-grid__pair-label input { width: 11px; height: 11px; cursor: pointer; accent-color: var(--caution); }
+
+/* Continuation label inside a cell */
+.timetable-grid__lab-continuation {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: var(--caution);
+  opacity: 0.7;
+  font-style: italic;
+  padding: 2px 0;
 }
 
-.timetable-grid__pair-label input {
-  width: 12px;
-  height: 12px;
-  cursor: pointer;
+/* Read-only lab label */
+.timetable-grid__lab-readonly {
+  font-size: 0.68rem;
+  color: var(--ghost);
+  font-family: var(--font-mono);
+}
+.timetable-grid__lab-readonly--mine {
+  color: var(--paper);
+  font-weight: 600;
 }
 
+/* 2h badge */
 .timetable-grid__pair-badge {
   display: inline-block;
   background: rgba(255,187,51,0.15);
@@ -160,13 +184,25 @@
   vertical-align: middle;
 }
 
-.timetable-grid__lab-readonly {
-  font-size: 0.65rem;
+/* ─── Legend ─────────────────────────────────────────────────── */
+.timetable-legend {
+  margin-top: 12px;
+  font-size: 0.78rem;
   color: var(--ghost);
-  font-family: var(--font-mono);
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
 }
+.timetable-legend__item { display: flex; align-items: center; gap: 6px; }
+.timetable-legend__dot {
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.timetable-legend__dot--pair { background: rgba(255,187,51,0.3); border: 1px solid var(--caution); }
 
-.timetable-grid__lab-readonly--mine {
-  color: var(--paper);
-  font-weight: 600;
+/* ─── Mobile ─────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .timetable-topbar h1 { font-size: 1.6rem; }
+  .timetable-topbar__right { width: 100%; justify-content: space-between; }
 }
