@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { getDayAttendance, markAttendance, bulkMarkAttendance, getMembers } from "../api/attendance";
 import { getTimetable } from "../api/timetable";
+import { listCancellations } from "../api/cancellations";
 import { todayISO, formatFriendlyDate, toISODate, TIME_SLOTS } from "../utils/dates";
 import "../styles/page.css";
 import "./Today.css";
@@ -13,6 +14,22 @@ const STATUS_META = {
   not_yet_occurred: { label: "Upcoming",  cls: "today__badge--ghost"   },
 };
 
+/** Extract surname (last word of name) for sorting */
+function surname(name) {
+  const parts = name.trim().split(/\s+/);
+  return parts[parts.length - 1].toLowerCase();
+}
+
+/** Sort members: roll number first (nulls last), then surname */
+function sortMembers(members) {
+  return [...members].sort((a, b) => {
+    if (a.rollNumber !== null && b.rollNumber !== null) return a.rollNumber - b.rollNumber;
+    if (a.rollNumber !== null) return -1;
+    if (b.rollNumber !== null) return 1;
+    return surname(a.name).localeCompare(surname(b.name));
+  });
+}
+
 export default function Today() {
   const { activeSectionId, isClassAdmin } = useAuth();
   const [date, setDate]       = useState(todayISO());
@@ -22,11 +39,12 @@ export default function Today() {
   const [updatingId, setUpdatingId] = useState(null);
 
   // CR mode
-  const [crMode, setCrMode]     = useState(false);
-  const [members, setMembers]   = useState([]);
+  const [crMode, setCrMode]       = useState(false);
+  const [members, setMembers]     = useState([]);
   const [timetable, setTimetable] = useState([]);
+  const [cancelled, setCancelled] = useState([]); // cancellations for selected date
   const [bulkState, setBulkState] = useState({});
-  const [saving, setSaving]     = useState(false);
+  const [saving, setSaving]       = useState(false);
 
   const load = useCallback(async () => {
     if (!activeSectionId) return;
@@ -40,24 +58,34 @@ export default function Today() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Load CR data + cancellations for the date
   useEffect(() => {
     if (!crMode || !activeSectionId) return;
     Promise.all([
       getMembers(activeSectionId, { full: false }),
       getTimetable(activeSectionId),
-    ]).then(([m, tt]) => {
-      // already sorted by roll number from backend
-      setMembers(m.members);
+      listCancellations(activeSectionId, { from: date, to: date }),
+    ]).then(([m, tt, c]) => {
+      setMembers(sortMembers(m.members));
       setTimetable(tt.timetable);
+      setCancelled(c.cancellations || []);
     }).catch((err) => setError(err.message));
-  }, [crMode, activeSectionId]);
+  }, [crMode, activeSectionId, date]);
 
   const dayOfWeek = (() => {
     const d = new Date(date + "T00:00:00").getDay();
     return (d === 0 || d === 6) ? null : d - 1;
   })();
 
-  const daySlots = timetable.filter((s) => s.dayOfWeek === dayOfWeek && !s.isBreak && s.subject);
+  // Filter out cancelled slots for the selected date
+  const cancelledSlotIds = new Set(cancelled.map((c) => c.timetableSlot?.id).filter(Boolean));
+
+  const daySlots = timetable.filter((s) =>
+    s.dayOfWeek === dayOfWeek &&
+    !s.isBreak &&
+    s.subject &&
+    !cancelledSlotIds.has(s.id)
+  );
 
   async function handleMark(recordId, status) {
     setUpdatingId(recordId); setError(null);
@@ -74,15 +102,10 @@ export default function Today() {
       const entries = [];
       for (const slot of daySlots) {
         for (const member of members) {
-          const key = `${member.userId}-${slot.id}`;
+          const key    = `${member.userId}-${slot.id}`;
           const status = bulkState[key];
           if (status) {
-            entries.push({
-              userId:          member.userId,
-              subjectId:       slot.subject.id,
-              timetableSlotId: slot.id,
-              status,
-            });
+            entries.push({ userId: member.userId, subjectId: slot.subject.id, timetableSlotId: slot.id, status });
           }
         }
       }
@@ -122,7 +145,7 @@ export default function Today() {
           {isClassAdmin && (
             <button
               className={`btn btn--sm ${crMode ? "btn--caution" : "btn--primary"}`}
-              onClick={() => setCrMode((v) => !v)}
+              onClick={() => { setCrMode((v) => !v); setBulkState({}); }}
             >
               {crMode ? "Student view" : "Take attendance (CR)"}
             </button>
@@ -138,7 +161,7 @@ export default function Today() {
         records.length === 0 ? (
           <div className="surface today-empty">
             <h3>No classes scheduled</h3>
-            <p>It's either a weekend, holiday, or nothing's on the timetable for this day.</p>
+            <p>It's a weekend, holiday, or nothing's on the timetable for this day.</p>
           </div>
         ) : (
           <div className="today-list">
@@ -183,12 +206,19 @@ export default function Today() {
           {dayOfWeek === null ? (
             <div className="surface today-empty"><h3>Weekend</h3><p>No classes on weekends.</p></div>
           ) : daySlots.length === 0 ? (
-            <div className="surface today-empty"><h3>No lectures today</h3><p>Nothing scheduled for this day.</p></div>
+            <div className="surface today-empty">
+              <h3>No lectures today</h3>
+              <p>
+                {cancelledSlotIds.size > 0
+                  ? `All ${cancelledSlotIds.size} slot(s) for today are cancelled.`
+                  : "Nothing scheduled in the timetable for this day."}
+              </p>
+            </div>
           ) : (
             <>
               <div className="cr-attendance__header">
                 <p className="text-ghost" style={{ fontSize: "0.85rem" }}>
-                  Students sorted by roll number. Mark P (present) or A (absent) per slot.
+                  Sorted by roll number, then surname. {cancelledSlotIds.size > 0 && `(${cancelledSlotIds.size} cancelled slot(s) hidden.)`}
                 </p>
                 <button className="btn btn--primary" onClick={handleBulkSave} disabled={saving}>
                   {saving ? "Saving…" : "Save attendance"}
@@ -213,7 +243,7 @@ export default function Today() {
                       const val = bulkState[key] || "";
                       return (
                         <div key={m.userId} className={`cr-member ${val === "attended" ? "cr-member--present" : val === "missed" ? "cr-member--absent" : ""}`}>
-                          <div className="cr-member__roll">
+                          <div className="cr-member__roll mono">
                             {m.rollNumber ? `#${m.rollNumber}` : "—"}
                           </div>
                           <div className="cr-member__name">{m.name}</div>

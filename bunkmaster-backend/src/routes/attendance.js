@@ -237,13 +237,13 @@ router.get(
       const full = req.query.full === "true" && isClassAdmin(req.membership.role);
 
       const memberships = await prisma.sectionMembership.findMany({
-        where: { sectionId },
-        include: { user: { select: { id: true, name: true, email: true } } },
-        orderBy: [
-       { rollNumber: { sort: "asc", nulls: "last" } },
-       { user: { name: "asc" } },
-       ],
-      });
+      where: { sectionId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+      orderBy: [
+     { rollNumber: { sort: "asc", nulls: "last" } },
+     { user: { name: "asc" } },
+     ],
+    });
 
       if (!full) {
         return res.json({
@@ -253,6 +253,7 @@ router.get(
             email: m.user.email,
             role: m.role,
             batchNumber: m.batchNumber,
+            rollNumber:  m.rollNumber ?? null,
           })),
         });
       }

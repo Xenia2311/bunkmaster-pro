@@ -3,7 +3,7 @@ import { api } from "./client";
 export function listCancellations(sectionId, { from, to } = {}) {
   const params = new URLSearchParams();
   if (from) params.set("from", from);
-  if (to) params.set("to", to);
+  if (to)   params.set("to", to);
   const qs = params.toString();
   return api.get(`/sections/${sectionId}/cancellations${qs ? `?${qs}` : ""}`);
 }
@@ -13,7 +13,7 @@ export function createCancellation(sectionId, { date, timetableSlotId, subjectId
 }
 
 export function getRescheduleOptions(sectionId, cancellationId, windowDays) {
-  const qs = windowDays ? `?windowDays=${encodeURIComponent(windowDays)}` : "";
+  const qs = windowDays ? `?days=${encodeURIComponent(windowDays)}` : "";
   return api.get(`/sections/${sectionId}/cancellations/${cancellationId}/reschedule-options${qs}`);
 }
 

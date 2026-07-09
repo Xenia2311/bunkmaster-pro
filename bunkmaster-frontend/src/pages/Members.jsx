@@ -11,6 +11,20 @@ const ROLE_META = {
   student: { label: "Student", cls: "role-badge--ghost"   },
 };
 
+function surname(name) {
+  const parts = name.trim().split(/\s+/);
+  return parts[parts.length - 1].toLowerCase();
+}
+
+function sortMembers(members) {
+  return [...members].sort((a, b) => {
+    if (a.rollNumber !== null && b.rollNumber !== null) return a.rollNumber - b.rollNumber;
+    if (a.rollNumber !== null) return -1;
+    if (b.rollNumber !== null) return 1;
+    return surname(a.name).localeCompare(surname(b.name));
+  });
+}
+
 export default function Members() {
   const { activeSectionId, isClassAdmin } = useAuth();
 
@@ -26,7 +40,7 @@ export default function Members() {
     setLoading(true); setError(null);
     try {
       const data = await getMembers(activeSectionId, { full: isClassAdmin });
-      setMembers(data.members);
+      setMembers(sortMembers(data.members));
     } catch (err) { setError(err.message); }
     finally { setLoading(false); }
   }, [activeSectionId, isClassAdmin]);
@@ -51,15 +65,11 @@ export default function Members() {
     try {
       const rollNumber = value === "" ? null : Number(value);
       const res = await updateMember(activeSectionId, userId, { rollNumber });
+      // Update local state and re-sort
       setMembers((prev) =>
-        prev
-          .map((m) => m.userId === userId ? { ...m, rollNumber: res.rollNumber } : m)
-          .sort((a, b) => {
-            if (a.rollNumber === null && b.rollNumber === null) return a.name.localeCompare(b.name);
-            if (a.rollNumber === null) return 1;
-            if (b.rollNumber === null) return -1;
-            return a.rollNumber - b.rollNumber;
-          })
+        sortMembers(prev.map((m) =>
+          m.userId === userId ? { ...m, rollNumber: res.rollNumber ?? null } : m
+        ))
       );
     } catch (err) { setError(err.message); }
   }
@@ -72,8 +82,8 @@ export default function Members() {
           <h1>Members</h1>
           <p>
             {isClassAdmin
-              ? "Click a roll number to edit it. Members are sorted by roll number."
-              : "Your classmates, sorted by roll number."}
+              ? "Click a roll number to edit it. Sorted by roll number, then surname."
+              : "Your classmates, sorted by roll number then surname."}
           </p>
         </div>
         {isClassAdmin && (
@@ -112,7 +122,6 @@ export default function Members() {
                   </div>
 
                   <div className="member-card__footer">
-                    {/* Roll number — editable by CR/SR */}
                     {isClassAdmin ? (
                       <RollNumberInput
                         value={m.rollNumber}
@@ -144,9 +153,11 @@ export default function Members() {
           <div className="report-controls">
             <div className="field" style={{ marginBottom: 0, flexDirection: "row", alignItems: "center", gap: 10 }}>
               <label>Target %</label>
-              <input type="number" min="0" max="100" value={target}
+              <input
+                type="number" min="0" max="100" value={target}
                 onChange={(e) => setTarget(Number(e.target.value) || 0)}
-                style={{ width: 72 }} />
+                style={{ width: 72 }}
+              />
             </div>
             <button className="btn btn--ghost btn--sm" onClick={loadReport} disabled={loading}>
               Refresh
@@ -200,16 +211,20 @@ export default function Members() {
   );
 }
 
-/** Inline editable roll number input for CR/SR */
 function RollNumberInput({ value, onSave }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft]     = useState(value ?? "");
+
+  // Sync draft when value changes from parent (e.g. after save)
+  useEffect(() => {
+    if (!editing) setDraft(value ?? "");
+  }, [value, editing]);
 
   function handleBlur() {
     setEditing(false);
     const trimmed = String(draft).trim();
     const newVal  = trimmed === "" ? null : Number(trimmed);
-    if (newVal !== value) onSave(trimmed);
+    if (newVal !== (value ?? null)) onSave(trimmed);
   }
 
   if (editing) {
@@ -221,15 +236,21 @@ function RollNumberInput({ value, onSave }) {
         autoFocus
         onChange={(e) => setDraft(e.target.value)}
         onBlur={handleBlur}
-        onKeyDown={(e) => { if (e.key === "Enter") e.target.blur(); if (e.key === "Escape") { setDraft(value ?? ""); setEditing(false); } }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.target.blur();
+          if (e.key === "Escape") { setDraft(value ?? ""); setEditing(false); }
+        }}
         placeholder="Roll #"
       />
     );
   }
 
   return (
-    <button className={`roll-badge ${value ? "" : "roll-badge--empty"}`} onClick={() => setEditing(true)}
-      title="Click to set roll number">
+    <button
+      className={`roll-badge ${!value ? "roll-badge--empty" : ""}`}
+      onClick={() => { setDraft(value ?? ""); setEditing(true); }}
+      title="Click to set roll number"
+    >
       {value ? `#${value}` : "+ Roll #"}
     </button>
   );
