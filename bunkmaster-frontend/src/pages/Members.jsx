@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getMembers, getReport } from "../api/attendance";
+import { getMembers, getReport, catchupAttendance } from "../api/attendance";
 import { updateMember } from "../api/sections";
+import { todayISO } from "../utils/dates";
 import "../styles/page.css";
 import "./Members.css";
 
@@ -34,6 +35,14 @@ export default function Members() {
   const [target, setTarget]   = useState(75);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  // Catchup panel state
+  const [catchupFor, setCatchupFor]   = useState(null); // { userId, name }
+  const [catchupFrom, setCatchupFrom] = useState("");
+  const [catchupTo, setCatchupTo]     = useState(todayISO());
+  const [catchupStatus, setCatchupStatus] = useState("attended");
+  const [catchupLoading, setCatchupLoading] = useState(false);
 
   const loadDirectory = useCallback(async () => {
     if (!activeSectionId) return;
@@ -65,13 +74,25 @@ export default function Members() {
     try {
       const rollNumber = value === "" ? null : Number(value);
       const res = await updateMember(activeSectionId, userId, { rollNumber });
-      // Update local state and re-sort
       setMembers((prev) =>
         sortMembers(prev.map((m) =>
           m.userId === userId ? { ...m, rollNumber: res.rollNumber ?? null } : m
         ))
       );
     } catch (err) { setError(err.message); }
+  }
+
+  async function handleCatchup() {
+    if (!catchupFor || !catchupFrom || !catchupTo) return;
+    setCatchupLoading(true); setError(null); setSuccess(null);
+    try {
+      const res = await catchupAttendance(activeSectionId, catchupFor.userId, {
+        from: catchupFrom, to: catchupTo, status: catchupStatus,
+      });
+      setSuccess(`Marked ${res.updated} record(s) as ${catchupStatus} for ${catchupFor.name}.`);
+      setCatchupFor(null);
+    } catch (err) { setError(err.message); }
+    finally { setCatchupLoading(false); }
   }
 
   return (
@@ -82,7 +103,7 @@ export default function Members() {
           <h1>Members</h1>
           <p>
             {isClassAdmin
-              ? "Click a roll number to edit it. Sorted by roll number, then surname."
+              ? "Click roll # to edit. Click name to mark past attendance for late joiners."
               : "Your classmates, sorted by roll number then surname."}
           </p>
         </div>
@@ -100,7 +121,47 @@ export default function Members() {
         )}
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error   && <div className="error-banner">{error}</div>}
+      {success && <div className="success-banner">{success}</div>}
+
+      {/* ── Catchup panel ── */}
+      {catchupFor && (
+        <div className="surface catchup-panel">
+          <div className="catchup-panel__header">
+            <h3>Mark past attendance — {catchupFor.name}</h3>
+            <button className="btn btn--ghost btn--sm" onClick={() => setCatchupFor(null)}>✕</button>
+          </div>
+          <p className="text-ghost" style={{ fontSize: "0.85rem", marginBottom: 16 }}>
+            Marks all unrecorded slots in this date range. Already-marked records are not overwritten.
+          </p>
+          <div className="catchup-panel__form">
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>From date</label>
+              <input type="date" value={catchupFrom} max={todayISO()}
+                onChange={(e) => setCatchupFrom(e.target.value)} />
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>To date</label>
+              <input type="date" value={catchupTo} max={todayISO()}
+                onChange={(e) => setCatchupTo(e.target.value)} />
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>Mark as</label>
+              <select value={catchupStatus} onChange={(e) => setCatchupStatus(e.target.value)}>
+                <option value="attended">Attended</option>
+                <option value="missed">Missed</option>
+              </select>
+            </div>
+            <button
+              className="btn btn--primary"
+              onClick={handleCatchup}
+              disabled={catchupLoading || !catchupFrom}
+            >
+              {catchupLoading ? "Saving…" : "Apply"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Directory ── */}
       {tab === "directory" && (
@@ -116,7 +177,13 @@ export default function Members() {
                       {m.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="member-card__info">
-                      <div className="member-card__name">{m.name}</div>
+                      <div
+                        className={`member-card__name ${isClassAdmin ? "member-card__name--clickable" : ""}`}
+                        onClick={() => isClassAdmin && setCatchupFor({ userId: m.userId, name: m.name })}
+                        title={isClassAdmin ? "Click to mark past attendance" : undefined}
+                      >
+                        {m.name}
+                      </div>
                       <div className="member-card__email eyebrow">{m.email}</div>
                     </div>
                   </div>
@@ -153,20 +220,16 @@ export default function Members() {
           <div className="report-controls">
             <div className="field" style={{ marginBottom: 0, flexDirection: "row", alignItems: "center", gap: 10 }}>
               <label>Target %</label>
-              <input
-                type="number" min="0" max="100" value={target}
+              <input type="number" min="0" max="100" value={target}
                 onChange={(e) => setTarget(Number(e.target.value) || 0)}
-                style={{ width: 72 }}
-              />
+                style={{ width: 72 }} />
             </div>
             <button className="btn btn--ghost btn--sm" onClick={loadReport} disabled={loading}>
               Refresh
             </button>
           </div>
 
-          {loading ? (
-            <p className="text-ghost">Building report…</p>
-          ) : !report ? null : (
+          {loading ? <p className="text-ghost">Building report…</p> : !report ? null : (
             <div className="report-scroll">
               <table className="report-table">
                 <thead>
@@ -182,14 +245,10 @@ export default function Members() {
                 <tbody>
                   {report.rows.map((row) => (
                     <tr key={row.userId} className="report-table__row">
-                      <td className="report-table__td mono text-ghost">
-                        {row.rollNumber ?? "—"}
-                      </td>
+                      <td className="report-table__td mono text-ghost">{row.rollNumber ?? "—"}</td>
                       <td className="report-table__td report-table__td--name">
                         <div className="report-name">{row.name}</div>
-                        <div className="eyebrow report-role">
-                          {ROLE_META[row.role]?.label} · B{row.batchNumber}
-                        </div>
+                        <div className="eyebrow report-role">{ROLE_META[row.role]?.label} · B{row.batchNumber}</div>
                       </td>
                       <td className="report-table__td">
                         <PctCell pct={row.overall.percentage} target={target} />
@@ -215,7 +274,6 @@ function RollNumberInput({ value, onSave }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft]     = useState(value ?? "");
 
-  // Sync draft when value changes from parent (e.g. after save)
   useEffect(() => {
     if (!editing) setDraft(value ?? "");
   }, [value, editing]);
@@ -237,7 +295,7 @@ function RollNumberInput({ value, onSave }) {
         onChange={(e) => setDraft(e.target.value)}
         onBlur={handleBlur}
         onKeyDown={(e) => {
-          if (e.key === "Enter") e.target.blur();
+          if (e.key === "Enter")  e.target.blur();
           if (e.key === "Escape") { setDraft(value ?? ""); setEditing(false); }
         }}
         placeholder="Roll #"
@@ -249,7 +307,7 @@ function RollNumberInput({ value, onSave }) {
     <button
       className={`roll-badge ${!value ? "roll-badge--empty" : ""}`}
       onClick={() => { setDraft(value ?? ""); setEditing(true); }}
-      title="Click to set roll number"
+      title="Click to edit roll number"
     >
       {value ? `#${value}` : "+ Roll #"}
     </button>

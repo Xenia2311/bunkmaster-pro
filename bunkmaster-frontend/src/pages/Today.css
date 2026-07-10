@@ -1,3 +1,25 @@
+/* ─── CR marked badge ────────────────────────────────────────── */
+.today__cr-badge {
+  display: inline-block;
+  background: rgba(255,79,43,0.15);
+  color: var(--signal);
+  border: 1px solid rgba(255,79,43,0.3);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ─── Disabled buttons ───────────────────────────────────────── */
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .today-header {
   display: flex;
   justify-content: space-between;
@@ -7,7 +29,10 @@
   margin-bottom: 24px;
 }
 
-.today-header__date { font-size: 2rem; margin-top: 4px; }
+.today-header__date {
+  font-size: 2rem;
+  margin-top: 4px;
+}
 
 .today-header__controls {
   display: flex;
@@ -16,7 +41,11 @@
   align-items: center;
 }
 
-.today-list { display: flex; flex-direction: column; gap: 10px; }
+.today-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 
 .today-row {
   display: flex;
@@ -35,9 +64,15 @@
   margin-bottom: 4px;
 }
 
-.today-row__right { display: flex; align-items: center; }
+.today-row__right {
+  display: flex;
+  align-items: center;
+}
 
-.today-row__btns { display: flex; gap: 8px; }
+.today-row__btns {
+  display: flex;
+  gap: 8px;
+}
 
 .today__badge {
   font-family: var(--font-mono);
@@ -47,16 +82,47 @@
   padding: 5px 12px;
   border-radius: 999px;
 }
-.today__badge--go      { background: rgba(41,224,140,0.12); color: var(--go);     border: 1px solid rgba(41,224,140,0.3); }
-.today__badge--signal  { background: rgba(255,79,43,0.12);  color: var(--signal); border: 1px solid rgba(255,79,43,0.3); }
-.today__badge--caution { background: rgba(255,187,51,0.12); color: var(--caution);border: 1px solid rgba(255,187,51,0.3); }
-.today__badge--ghost   { background: var(--ink-2); color: var(--ghost-2); border: 1px solid var(--line-2); }
 
-.today-empty { text-align: center; padding: 48px 24px; }
-.today-empty h3 { margin-bottom: 8px; }
+.today__badge--go {
+  background: rgba(41,224,140,0.12);
+  color: var(--go);
+  border: 1px solid rgba(41,224,140,0.3);
+}
+
+.today__badge--signal {
+  background: rgba(255,79,43,0.12);
+  color: var(--signal);
+  border: 1px solid rgba(255,79,43,0.3);
+}
+
+.today__badge--caution {
+  background: rgba(255,187,51,0.12);
+  color: var(--caution);
+  border: 1px solid rgba(255,187,51,0.3);
+}
+
+.today__badge--ghost {
+  background: var(--ink-2);
+  color: var(--ghost-2);
+  border: 1px solid var(--line-2);
+}
+
+.today-empty {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.today-empty h3 {
+  margin-bottom: 8px;
+}
 
 /* ─── CR mode ────────────────────────────────────────────────── */
-.cr-attendance { display: flex; flex-direction: column; gap: 16px; }
+
+.cr-attendance {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 
 .cr-attendance__header {
   display: flex;
@@ -136,19 +202,49 @@
   white-space: nowrap;
 }
 
-.cr-member__btns { display: flex; gap: 4px; flex-shrink: 0; }
-
-
+.cr-member__btns {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
 
 @media (max-width: 640px) {
-  .today-header       { flex-direction: column; align-items: flex-start; gap: 10px; }
-  .today-header__date { font-size: 1.5rem; }
-  .today-header__controls { flex-wrap: wrap; gap: 6px; }
+  .today-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
 
-  .today-row { padding: 14px; gap: 10px; }
-  .today-row__btns { flex-direction: column; gap: 6px; }
-  .today-row__btns .btn { width: 100%; }
+  .today-header__date {
+    font-size: 1.5rem;
+  }
 
-  .cr-slot__header { flex-direction: column; align-items: flex-start; gap: 10px; }
-  .cr-slot__members { grid-template-columns: 1fr; }
+  .today-header__controls {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .today-row {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .today-row__btns {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .today-row__btns .btn {
+    width: 100%;
+  }
+
+  .cr-slot__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .cr-slot__members {
+    grid-template-columns: 1fr;
+  }
 }

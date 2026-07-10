@@ -238,6 +238,7 @@ model AttendanceRecord {
   date            DateTime         @db.Date
   status          AttendanceStatus @default(not_yet_occurred)
   // which timetable slot this record corresponds to (for traceability)
+  markedByCR Boolean         @default(false)
   timetableSlotId String?
 
   createdAt DateTime @default(now())

@@ -9,37 +9,41 @@ import { formatFriendlyDate, toISODate, DAY_NAMES, TIME_SLOTS } from "../utils/d
 import "../styles/page.css";
 import "./Cancellations.css";
 
+function safeFormatDate(val) {
+  if (!val) return "—";
+  // handle both "2026-06-20" and "2026-06-20T00:00:00.000Z"
+  return formatFriendlyDate(String(val).slice(0, 10));
+}
+
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
 export default function Cancellations() {
   const { activeSectionId, isClassAdmin } = useAuth();
   const [cancellations, setCancellations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const [optionsFor, setOptionsFor] = useState(null); // cancellationId currently showing options
-  const [options, setOptions] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+  const [optionsFor, setOptionsFor]   = useState(null);
+  const [options, setOptions]         = useState([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
-  const [actingId, setActingId] = useState(null);
+  const [actingId, setActingId]       = useState(null);
 
   const load = useCallback(async () => {
     if (!activeSectionId) return;
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
-      // Show a wide window: 30 days back to 30 days ahead
       const from = toISODate(addDays(new Date(), -30));
-      const to = toISODate(addDays(new Date(), 30));
+      const to   = toISODate(addDays(new Date(),  30));
       const data = await listCancellations(activeSectionId, { from, to });
       setCancellations(data.cancellations);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   }, [activeSectionId]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
   async function handleFindOptions(cancellationId) {
     setOptionsFor(cancellationId);
@@ -49,31 +53,24 @@ export default function Cancellations() {
     try {
       const data = await getRescheduleOptions(activeSectionId, cancellationId, 14);
       setOptions(data.options);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setOptionsLoading(false);
-    }
+    } catch (err) { setError(err.message); }
+    finally { setOptionsLoading(false); }
   }
 
   async function handleReschedule(cancellationId, option) {
-    setActingId(cancellationId);
-    setError(null);
+    setActingId(cancellationId); setError(null);
     try {
       await rescheduleCancellation(activeSectionId, cancellationId, {
-        date: option.date,
+        date:            option.date,
         timetableSlotId: option.timetableSlotId,
       });
       setOptionsFor(null);
       await load();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setActingId(null);
-    }
+    } catch (err) { setError(err.message); }
+    finally { setActingId(null); }
   }
 
-  const pending = cancellations.filter((c) => c.status === "cancelled");
+  const pending  = cancellations.filter((c) => c.status === "cancelled");
   const resolved = cancellations.filter((c) => c.status === "rescheduled");
 
   return (
@@ -83,14 +80,12 @@ export default function Cancellations() {
       <p className="page-sub">
         {isClassAdmin
           ? "Cancelled lectures show up here. Find a free slot and lock in a make-up time."
-          : "Lectures cancelled by your CR/SR, and their make-up slots, show up here."}
+          : "Lectures cancelled by your CR/SR, and their make-up slots."}
       </p>
 
       {error && <div className="error-banner">{error}</div>}
 
-      {loading ? (
-        <p className="text-ghost">Loading...</p>
-      ) : (
+      {loading ? <p className="text-ghost">Loading…</p> : (
         <>
           <section className="cancellations__section">
             <h2 className="cancellations__heading">Awaiting reschedule</h2>
@@ -103,8 +98,7 @@ export default function Cancellations() {
                     <div className="cancellations__item-main">
                       <div className="cancellations__item-title">{c.subject.name}</div>
                       <div className="eyebrow">
-                        {formatFriendlyDate(c.date)} · Slot {c.timetableSlot.slotIndex + 1} (
-                        {DAY_NAMES[c.timetableSlot.dayOfWeek]})
+                        {safeFormatDate(c.date)} · Slot {c.timetableSlot.slotIndex + 1} ({DAY_NAMES[c.timetableSlot.dayOfWeek]})
                       </div>
                       {c.reason && <p className="cancellations__reason">"{c.reason}"</p>}
                     </div>
@@ -114,19 +108,16 @@ export default function Cancellations() {
                         className="btn btn--primary"
                         onClick={() => handleFindOptions(c.id)}
                         disabled={actingId === c.id}
-                      >
-                        Find make-up slot
-                      </button>
+                      >Find make-up slot</button>
                     )}
 
                     {optionsFor === c.id && (
                       <div className="cancellations__options">
                         {optionsLoading ? (
-                          <p className="text-ghost">Searching the next 14 days...</p>
+                          <p className="text-ghost">Searching the next 14 days…</p>
                         ) : options.length === 0 ? (
                           <p className="text-ghost">
-                            No free slots found in the next 14 days. Try clearing a slot in the timetable
-                            first.
+                            No free slots found in the next 14 days. Try clearing a slot in the timetable first.
                           </p>
                         ) : (
                           <div className="cancellations__options-grid">
@@ -137,10 +128,9 @@ export default function Cancellations() {
                                 onClick={() => handleReschedule(c.id, opt)}
                                 disabled={actingId === c.id}
                               >
-                                <span className="mono">{opt.date}</span>
+                                <span className="mono">{safeFormatDate(opt.date)}</span>
                                 <span className="eyebrow">
-                                  {DAY_NAMES[opt.dayOfWeek]} · Slot {opt.slotIndex + 1} ·{" "}
-                                  {TIME_SLOTS[opt.slotIndex]}
+                                  {DAY_NAMES[opt.dayOfWeek]} · Slot {opt.slotIndex + 1} · {TIME_SLOTS[opt.slotIndex]}
                                 </span>
                               </button>
                             ))}
@@ -165,8 +155,8 @@ export default function Cancellations() {
                     <div className="cancellations__item-main">
                       <div className="cancellations__item-title">{c.subject.name}</div>
                       <div className="eyebrow">
-                        Was {formatFriendlyDate(c.date)} → now{" "}
-                        <span className="text-go">{formatFriendlyDate(c.rescheduledDate)}</span>
+                        Was {safeFormatDate(c.date)} →
+                        now <span className="text-go">{safeFormatDate(c.rescheduledDate)}</span>
                       </div>
                     </div>
                     <span className="cancellations__badge">Rescheduled</span>
@@ -179,10 +169,4 @@ export default function Cancellations() {
       )}
     </div>
   );
-}
-
-function addDays(date, n) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + n);
-  return d;
 }
