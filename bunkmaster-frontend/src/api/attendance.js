@@ -36,3 +36,10 @@ export function markDayAttendance(sectionId, date, { status, subjectIds }) {
 export function bulkMarkAttendance(sectionId, { date, entries }) {
   return api.patch(`/sections/${sectionId}/attendance/bulk`, { date, entries });
 }
+
+export function catchupAttendance(sectionId, userId, { from, to, status }) {
+  return api.patch(
+    `/sections/${sectionId}/attendance/catchup/${userId}`,
+    { from, to, status }
+  );
+}

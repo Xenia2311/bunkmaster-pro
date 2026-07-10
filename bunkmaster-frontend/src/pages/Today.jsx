@@ -58,6 +58,7 @@ export default function Today() {
 
   useEffect(() => { load(); }, [load]);
 
+
   useEffect(() => {
     if (!crMode || !activeSectionId) return;
     Promise.all([
@@ -141,15 +142,17 @@ export default function Today() {
   }
 
   function shiftDate(n) {
-  // Parse date parts directly to avoid timezone issues
   const [year, month, day] = date.split("-").map(Number);
-  const d = new Date(year, month - 1, day + n); // local time, no UTC conversion
+  const d = new Date(year, month - 1, day + n);
+
   const newDate = [
     d.getFullYear(),
     String(d.getMonth() + 1).padStart(2, "0"),
     String(d.getDate()).padStart(2, "0"),
   ].join("-");
-  if (newDate > today) return;
+
+
+
   setDate(newDate);
 }
 
