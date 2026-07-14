@@ -134,11 +134,17 @@ async function resyncDateCancellations(sectionId, targetDate) {
   });
 
   for (const c of cancellations) {
-    await prisma.attendanceRecord.updateMany({
-      where: { date: targetDate, timetableSlotId: c.timetableSlotId, subjectId: c.subjectId, status: "not_yet_occurred" },
-      data:  { status: "cancelled" },
-    });
-  }
+  await prisma.attendanceRecord.updateMany({
+    where: {
+      date: targetDate,
+      timetableSlotId: c.timetableSlotId,
+      subjectId: c.subjectId,
+    },
+    data: {
+      status: "cancelled",
+    },
+  });
+}
 
   await syncAttendanceForSection(sectionId, targetDate, targetDate);
 }
