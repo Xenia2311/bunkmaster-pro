@@ -110,8 +110,77 @@
 }
 
 @media (max-width: 640px) {
-  .admin__grid { grid-template-columns: 1fr; }
-  .admin__cancel-form { grid-template-columns: 1fr; }
-  .admin__inline-form { flex-wrap: wrap; }
-  .admin__card--wide { grid-column: 1; }
+  .admin__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin__cancel-form {
+    grid-template-columns: 1fr;
+  }
+
+  .admin__inline-form {
+    flex-wrap: wrap;
+  }
+
+  .admin__card--wide {
+    grid-column: 1;
+  }
+}
+
+/* ─── Batch manager ──────────────────────────────────────────── */
+
+.admin__batch-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.admin__batch-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--ink-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+}
+
+.admin__batch-name {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin__batch-role {
+  font-size: 0.62rem;
+  flex-shrink: 0;
+  color: var(--ghost);
+}
+
+.admin__batch-select {
+  background: var(--ink);
+  border: 1px solid var(--line-3);
+  color: var(--paper);
+  border-radius: var(--r-sm);
+  padding: 5px 8px;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  flex-shrink: 0;
+  width: 90px;
+}
+
+@media (max-width: 640px) {
+  .admin__batch-row {
+    flex-wrap: wrap;
+  }
+
+  .admin__batch-select {
+    width: 100%;
+  }
 }

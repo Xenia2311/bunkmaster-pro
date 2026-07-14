@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { getDayAttendance, markAttendance, bulkMarkAttendance, getMembers } from "../api/attendance";
 import { getTimetable } from "../api/timetable";
 import { listCancellations } from "../api/cancellations";
-import { todayISO, formatFriendlyDate, toISODate, TIME_SLOTS } from "../utils/dates";
+import { todayISO, formatFriendlyDate, shiftDate, timetableDayOfWeek, TIME_SLOTS } from "../utils/dates";
 import "../styles/page.css";
 import "./Today.css";
 
@@ -42,6 +42,7 @@ export default function Today() {
   const [members, setMembers]     = useState([]);
   const [timetable, setTimetable] = useState([]);
   const [cancelled, setCancelled] = useState([]);
+  // bulkState: { [userId-slotId]: "attended"|"missed" }
   const [bulkState, setBulkState] = useState({});
   const [saving, setSaving]       = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -58,7 +59,7 @@ export default function Today() {
 
   useEffect(() => { load(); }, [load]);
 
-
+  // Load CR data when switching to CR mode or changing date
   useEffect(() => {
     if (!crMode || !activeSectionId) return;
     Promise.all([
@@ -66,26 +67,25 @@ export default function Today() {
       getTimetable(activeSectionId),
       listCancellations(activeSectionId, { from: date, to: date }),
     ]).then(([m, tt, c]) => {
-      setMembers(sortMembers(m.members));
+      const sorted = sortMembers(m.members);
+      setMembers(sorted);
       setTimetable(tt.timetable);
       setCancelled(c.cancellations || []);
+      // FIX: pre-populate bulkState from existing attendance records
+      // so green/red marks survive page load and post-save
+      setBulkState({});
     }).catch((err) => setError(err.message));
   }, [crMode, activeSectionId, date]);
 
-  const dayOfWeek = (() => {
-  const [year, month, day] = date.split("-").map(Number);
-  const d = new Date(year, month - 1, day).getDay(); // local time
-  return (d === 0 || d === 6) ? null : d - 1;
-  })();
-
+  const dayOfWeek = timetableDayOfWeek(date);
   const cancelledSlotIds = new Set(cancelled.map((c) => c.timetableSlot?.id).filter(Boolean));
 
-  // Only show slots that have something scheduled AND aren't cancelled
+  // Only show slots that have a subject AND aren't cancelled
   const daySlots = timetable.filter((s) =>
     s.dayOfWeek === dayOfWeek &&
     !s.isBreak &&
-    s.subject &&                        // must have a lecture assigned
-    !cancelledSlotIds.has(s.id)         // must not be cancelled
+    s.subject &&
+    !cancelledSlotIds.has(s.id)
   );
 
   async function handleMark(recordId, status) {
@@ -106,16 +106,21 @@ export default function Today() {
           const key    = `${member.userId}-${slot.id}`;
           const status = bulkState[key];
           if (status) {
-            entries.push({ userId: member.userId, subjectId: slot.subject.id, timetableSlotId: slot.id, status });
+            entries.push({
+              userId:          member.userId,
+              subjectId:       slot.subject.id,
+              timetableSlotId: slot.id,
+              status,
+            });
           }
         }
       }
       if (!entries.length) { setSaving(false); return; }
       await bulkMarkAttendance(activeSectionId, { date, entries });
-      // FIX: don't clear bulkState after save — keep marks visible
+      // FIX: do NOT clear bulkState — keep the marks visible
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-      // Reload student view too
+      // Reload student view quietly in background
       load();
     } catch (err) { setError(err.message); }
     finally { setSaving(false); }
@@ -127,34 +132,25 @@ export default function Today() {
     setBulkState((prev) => ({ ...prev, ...updates }));
   }
 
-  // Copy attendance from the previous slot in daySlots
-  function copyFromPreviousSlot(slotId, slotIndex) {
+  function copyFromPreviousSlot(slotId) {
     const currentIdx = daySlots.findIndex((s) => s.id === slotId);
     if (currentIdx <= 0) return;
     const prevSlot = daySlots[currentIdx - 1];
     const updates  = {};
     for (const m of members) {
-      const prevKey = `${m.userId}-${prevSlot.id}`;
-      const prevVal = bulkState[prevKey];
+      const prevVal = bulkState[`${m.userId}-${prevSlot.id}`];
       if (prevVal) updates[`${m.userId}-${slotId}`] = prevVal;
     }
     setBulkState((prev) => ({ ...prev, ...updates }));
   }
 
-  function shiftDate(n) {
-  const [year, month, day] = date.split("-").map(Number);
-  const d = new Date(year, month - 1, day + n);
-
-  const newDate = [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, "0"),
-    String(d.getDate()).padStart(2, "0"),
-  ].join("-");
-
-
-
-  setDate(newDate);
-}
+  function handleShift(n) {
+    const newDate = shiftDate(date, n);
+    if (newDate > today) return;
+    setDate(newDate);
+    setBulkState({});
+    setSaveSuccess(false);
+  }
 
   const isToday = date === today;
 
@@ -166,16 +162,17 @@ export default function Today() {
           <h1 className="today-header__date">{formatFriendlyDate(date)}</h1>
         </div>
         <div className="today-header__controls">
-          <button className="btn btn--ghost btn--sm" onClick={() => shiftDate(-1)}>← Prev</button>
+          <button className="btn btn--ghost btn--sm" onClick={() => handleShift(-1)}>← Prev</button>
           {!isToday && (
-            <button className="btn btn--ghost btn--sm" onClick={() => setDate(today)}>Today</button>
+            <button className="btn btn--ghost btn--sm" onClick={() => { setDate(today); setBulkState({}); }}>
+              Today
+            </button>
           )}
-          {/* Next is disabled when already at today */}
           <button
             className="btn btn--ghost btn--sm"
-            onClick={() => shiftDate(1)}
+            onClick={() => handleShift(1)}
             disabled={isToday}
-            title={isToday ? "Can't view future attendance" : "Next day"}
+            style={{ opacity: isToday ? 0.35 : 1, cursor: isToday ? "not-allowed" : "pointer" }}
           >Next →</button>
           {isClassAdmin && (
             <button
@@ -189,9 +186,9 @@ export default function Today() {
       </div>
 
       {error       && <div className="error-banner">{error}</div>}
-      {saveSuccess && <div className="success-banner">Attendance saved successfully.</div>}
+      {saveSuccess && <div className="success-banner">Attendance saved.</div>}
 
-      {/* ── Student self-check-in ── */}
+      {/* ── Student view ── */}
       {!crMode && (
         loading ? <p className="text-ghost">Loading schedule…</p> :
         records.length === 0 ? (
@@ -203,6 +200,8 @@ export default function Today() {
           <div className="today-list">
             {records.map((r) => {
               const meta = STATUS_META[r.status] || STATUS_META.not_yet_occurred;
+              // CR can always edit; students are read-only if CR has marked it
+              const isReadOnly = !isClassAdmin && (r.status === "cancelled" || r.markedByCR);
               return (
                 <div key={r.id} className="surface--raised today-row">
                   <div className="today-row__left">
@@ -213,11 +212,8 @@ export default function Today() {
                     </div>
                   </div>
                   <div className="today-row__right">
-                    {/* If CR marked it — show read-only status */}
-                    {r.status === "cancelled" || r.markedByCR ? (
-                      <span className={`today__badge ${meta.cls}`}>
-                        {r.markedByCR && r.status !== "cancelled" ? STATUS_META[r.status].label : meta.label}
-                      </span>
+                    {isReadOnly || r.status === "cancelled" ? (
+                      <span className={`today__badge ${meta.cls}`}>{meta.label}</span>
                     ) : (
                       <div className="today-row__btns">
                         <button
@@ -279,14 +275,15 @@ export default function Today() {
                     </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {slotIdx > 0 && (
-                        <button
-                          className="btn btn--sm btn--ghost"
-                          onClick={() => copyFromPreviousSlot(slot.id, slot.slotIndex)}
-                          title="Copy attendance from the previous slot"
-                        >↑ Same as previous</button>
+                        <button className="btn btn--sm btn--ghost"
+                          onClick={() => copyFromPreviousSlot(slot.id)}>
+                          ↑ Same as previous
+                        </button>
                       )}
-                      <button className="btn btn--sm btn--go"      onClick={() => markAllSlot(slot.id, "attended")}>All present</button>
-                      <button className="btn btn--sm btn--primary"  onClick={() => markAllSlot(slot.id, "missed")}>All absent</button>
+                      <button className="btn btn--sm btn--go"
+                        onClick={() => markAllSlot(slot.id, "attended")}>All present</button>
+                      <button className="btn btn--sm btn--primary"
+                        onClick={() => markAllSlot(slot.id, "missed")}>All absent</button>
                     </div>
                   </div>
                   <div className="cr-slot__members">
@@ -294,10 +291,8 @@ export default function Today() {
                       const key = `${m.userId}-${slot.id}`;
                       const val = bulkState[key] || "";
                       return (
-                        <div
-                          key={m.userId}
-                          className={`cr-member ${val === "attended" ? "cr-member--present" : val === "missed" ? "cr-member--absent" : ""}`}
-                        >
+                        <div key={m.userId}
+                          className={`cr-member ${val === "attended" ? "cr-member--present" : val === "missed" ? "cr-member--absent" : ""}`}>
                           <div className="cr-member__roll mono">
                             {m.rollNumber ? `#${m.rollNumber}` : "—"}
                           </div>

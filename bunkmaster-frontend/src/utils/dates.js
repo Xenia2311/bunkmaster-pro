@@ -1,55 +1,62 @@
-export const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-
+export const DAY_NAMES  = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 export const TIME_SLOTS = [
-  "08:30",
-  "09:30",
-  "10:30",
-  "11:30",
-  "BREAK",
-  "13:15",
-  "14:15",
-  "15:15",
-  "16:15",
+  "08:30","09:30","10:30","11:30","BREAK","13:15","14:15","15:15","16:15",
 ];
 
 /**
- * Format a Date (or date string) as YYYY-MM-DD.
- * @param {Date|string} date
- * @returns {string}
+ * Format any date value as YYYY-MM-DD using LOCAL time.
+ * Handles Date objects, "YYYY-MM-DD", and "YYYY-MM-DDTHH:mm:ss.sssZ".
  */
-export function toISODate(date) {
-  const d = new Date(date);
-  const year = d.getUTCFullYear();
-  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+export function toISODate(value) {
+  let d;
+  if (value instanceof Date) {
+    d = value;
+  } else {
+    const s = String(value).slice(0, 10);
+    const [y, m, day] = s.split("-").map(Number);
+    d = new Date(y, m - 1, day); // local time — no UTC drift
+  }
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, "0"),
+    String(d.getDate()).padStart(2, "0"),
+  ].join("-");
 }
 
-/**
- * Today's date as YYYY-MM-DD (local).
- */
+/** Today as YYYY-MM-DD in local time */
 export function todayISO() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return toISODate(new Date());
 }
 
 /**
- * Convert a JS Date's getDay() (0=Sun..6=Sat) to timetable dayOfWeek
- * (0=Mon..4=Fri), or null for weekends.
+ * Shift a YYYY-MM-DD string by n days (positive or negative).
+ * Pure local-time arithmetic — no UTC involved.
  */
-export function jsDateToTimetableDay(date) {
-  const jsDay = new Date(date).getDay();
+export function shiftDate(isoDate, n) {
+  const [y, m, d] = String(isoDate).slice(0, 10).split("-").map(Number);
+  const date = new Date(y, m - 1, d + n);
+  return toISODate(date);
+}
+
+/**
+ * Get timetable dayOfWeek (0=Mon…4=Fri) from a YYYY-MM-DD string.
+ * Returns null for weekends.
+ */
+export function timetableDayOfWeek(isoDate) {
+  const [y, m, d] = String(isoDate).slice(0, 10).split("-").map(Number);
+  const jsDay = new Date(y, m - 1, d).getDay(); // 0=Sun…6=Sat
   if (jsDay === 0 || jsDay === 6) return null;
-  return jsDay - 1;
+  return jsDay - 1; // Mon=0…Fri=4
 }
 
 /**
- * Human-friendly weekday + date, e.g. "Mon, 16 Jun"
+ * Human-friendly date label: "Mon, 10 Jul"
+ * Accepts any date value — slices to YYYY-MM-DD first.
  */
-export function formatFriendlyDate(isoDate) {
-  const d = new Date(isoDate + "T00:00:00");
-  return d.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+export function formatFriendlyDate(value) {
+  const s = String(value).slice(0, 10);
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    weekday: "short", day: "numeric", month: "short",
+  });
 }
