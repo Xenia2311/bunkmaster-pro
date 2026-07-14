@@ -12,6 +12,10 @@ export function createCancellation(sectionId, { date, timetableSlotId, subjectId
   return api.post(`/sections/${sectionId}/cancellations`, { date, timetableSlotId, subjectId, reason });
 }
 
+export function deleteCancellation(sectionId, cancellationId) {
+  return api.delete(`/sections/${sectionId}/cancellations/${cancellationId}`);
+}
+
 export function getRescheduleOptions(sectionId, cancellationId, windowDays) {
   const qs = windowDays ? `?days=${encodeURIComponent(windowDays)}` : "";
   return api.get(`/sections/${sectionId}/cancellations/${cancellationId}/reschedule-options${qs}`);

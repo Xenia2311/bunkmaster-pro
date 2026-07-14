@@ -84,3 +84,28 @@
 .cancellations__option:hover {
   border-color: var(--go);
 }
+
+/* ─── Item actions row ───────────────────────────────────────── */
+
+.cancellations__item-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .cancellations__item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cancellations__item-actions {
+    width: 100%;
+  }
+
+  .cancellations__item-actions .btn {
+    flex: 1;
+    text-align: center;
+  }
+}

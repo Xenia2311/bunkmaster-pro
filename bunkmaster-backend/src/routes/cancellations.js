@@ -297,3 +297,52 @@ router.post(
 );
 
 module.exports = router;
+
+/**
+ * DELETE /sections/:sectionId/cancellations/:cancellationId
+ * CR/SR only: remove a cancellation (undo it).
+ * Flips affected AttendanceRecords back from "cancelled" to "not_yet_occurred".
+ * Only works for cancellations that haven't been rescheduled yet.
+ */
+router.delete(
+  "/:cancellationId",
+  requireAuth,
+  requireSectionRole(["cr", "sr"]),
+  async (req, res, next) => {
+    try {
+      const cancellation = await prisma.cancellation.findFirst({
+        where: { id: req.params.cancellationId, sectionId: req.params.sectionId },
+      });
+      if (!cancellation) return res.status(404).json({ error: "Cancellation not found" });
+
+      if (cancellation.status === "rescheduled") {
+        return res.status(400).json({
+          error: "This cancellation has already been rescheduled. Delete the reschedule first.",
+        });
+      }
+
+      const targetDate = cancellation.date;
+
+      // Flip AttendanceRecords back to not_yet_occurred
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const isPast = new Date(targetDate) < today;
+
+      await prisma.attendanceRecord.updateMany({
+        where: {
+          timetableSlotId: cancellation.timetableSlotId,
+          subjectId:       cancellation.subjectId,
+          date:            targetDate,
+          status:          "cancelled",
+        },
+        // If the date is in the past, revert to "missed" (not_yet_occurred would be wrong)
+        // If it's today or future, revert to "not_yet_occurred"
+        data: { status: isPast ? "missed" : "not_yet_occurred" },
+      });
+
+      await prisma.cancellation.delete({ where: { id: cancellation.id } });
+
+      res.json({ success: true, message: "Cancellation removed. Attendance records restored." });
+    } catch (err) { next(err); }
+  }
+);
