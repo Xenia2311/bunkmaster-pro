@@ -128,26 +128,9 @@ router.post(
 );
 
 async function resyncDateCancellations(sectionId, targetDate) {
-  const cancellations = await prisma.cancellation.findMany({
-    where: { sectionId, date: targetDate, status: "cancelled" },
-    select: { timetableSlotId: true, subjectId: true },
-  });
-
-  for (const c of cancellations) {
-  await prisma.attendanceRecord.updateMany({
-    where: {
-      date: targetDate,
-      timetableSlotId: c.timetableSlotId,
-      subjectId: c.subjectId,
-    },
-    data: {
-      status: "cancelled",
-    },
-  });
-}
-
   await syncAttendanceForSection(sectionId, targetDate, targetDate);
 }
+
 
 router.get(
   "/:cancellationId/reschedule-options",
@@ -310,16 +293,30 @@ module.exports = router;
  * Flips affected AttendanceRecords back from "cancelled" to "not_yet_occurred".
  * Only works for cancellations that haven't been rescheduled yet.
  */
+/**
+ * DELETE /sections/:sectionId/cancellations/:cancellationId
+ * CR/SR only: remove a cancellation (undo it).
+ */
 router.delete(
   "/:cancellationId",
   requireAuth,
   requireSectionRole(["cr", "sr"]),
   async (req, res, next) => {
     try {
+      const sectionId = req.params.sectionId;
+
       const cancellation = await prisma.cancellation.findFirst({
-        where: { id: req.params.cancellationId, sectionId: req.params.sectionId },
+        where: {
+          id: req.params.cancellationId,
+          sectionId,
+        },
       });
-      if (!cancellation) return res.status(404).json({ error: "Cancellation not found" });
+
+      if (!cancellation) {
+        return res.status(404).json({
+          error: "Cancellation not found",
+        });
+      }
 
       if (cancellation.status === "rescheduled") {
         return res.status(400).json({
@@ -329,26 +326,37 @@ router.delete(
 
       const targetDate = cancellation.date;
 
-      // Flip AttendanceRecords back to not_yet_occurred
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-      const isPast = new Date(targetDate) < today;
+      // Remove the cancellation
+      await prisma.cancellation.delete({
+  where: {
+    id: cancellation.id,
+  },
+});
 
-      await prisma.attendanceRecord.updateMany({
-        where: {
-          timetableSlotId: cancellation.timetableSlotId,
-          subjectId:       cancellation.subjectId,
-          date:            targetDate,
-          status:          "cancelled",
-        },
-        // If the date is in the past, revert to "missed" (not_yet_occurred would be wrong)
-        // If it's today or future, revert to "not_yet_occurred"
-        data: { status: isPast ? "missed" : "not_yet_occurred" },
+await prisma.attendanceRecord.updateMany({
+  where: {
+    date: targetDate,
+    timetableSlotId: cancellation.timetableSlotId,
+    subjectId: cancellation.subjectId,
+    status: "cancelled",
+    markedByCR: false,
+  },
+  data: {
+    status: "not_yet_occurred",
+  },
+});
+
+await syncAttendanceForSection(
+  sectionId,
+  targetDate,
+  targetDate
+);
+      res.json({
+        success: true,
+        message: "Cancellation removed and attendance re-synced.",
       });
-
-      await prisma.cancellation.delete({ where: { id: cancellation.id } });
-
-      res.json({ success: true, message: "Cancellation removed. Attendance records restored." });
-    } catch (err) { next(err); }
+    } catch (err) {
+      next(err);
+    }
   }
 );

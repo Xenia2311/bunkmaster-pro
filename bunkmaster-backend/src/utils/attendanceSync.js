@@ -186,11 +186,29 @@ async function syncAttendanceForSection(sectionId, from, to) {
 
   // createMany with skipDuplicates handles idempotency against existing rows
   const result = await prisma.attendanceRecord.createMany({
-    data: deduped,
-    skipDuplicates: true,
-  });
+  data: deduped,
+  skipDuplicates: true,
+});
 
-  return { created: result.count, scannedDays };
+// Apply all cancellations to both newly-created AND existing records.
+for (const c of cancellations) {
+  await prisma.attendanceRecord.updateMany({
+    where: {
+      date: c.date,
+      timetableSlotId: c.timetableSlotId,
+      subjectId: c.subjectId,
+      markedByCR: false,
+    },
+    data: {
+      status: "cancelled",
+    },
+  });
+}
+
+return {
+  created: result.count,
+  scannedDays,
+};
 }
 
 /**
