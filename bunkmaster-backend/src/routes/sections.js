@@ -187,6 +187,7 @@ router.get("/:sectionId", requireAuth, requireSectionRole(null), async (req, res
         email:       m.user.email,
         role:        m.role,
         batchNumber: m.batchNumber,
+        rollNumber:  m.rollNumber ?? null,
       })),
       yourRole:        req.membership.role,
       yourBatchNumber: req.membership.batchNumber,

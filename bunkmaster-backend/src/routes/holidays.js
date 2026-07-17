@@ -3,6 +3,7 @@ const { body, validationResult } = require("express-validator");
 
 const prisma = require("../utils/prisma");
 const { requireAuth, requireSectionRole } = require("../middleware/auth");
+const { dateOnly } = require("../utils/attendanceSync");
 
 const router = express.Router({ mergeParams: true });
 
@@ -17,8 +18,8 @@ router.get("/", requireAuth, requireSectionRole(null), async (req, res, next) =>
     const where = { sectionId: req.params.sectionId };
     if (from || to) {
       where.date = {};
-      if (from) where.date.gte = new Date(from);
-      if (to) where.date.lte = new Date(to);
+      if (from) where.date.gte = dateOnly(from);
+      if (to)   where.date.lte = dateOnly(to);
     }
 
     const holidays = await prisma.holidayCalendar.findMany({

@@ -285,8 +285,6 @@ router.post(
   }
 );
 
-module.exports = router;
-
 /**
  * DELETE /sections/:sectionId/cancellations/:cancellationId
  * CR/SR only: remove a cancellation (undo it).
@@ -360,3 +358,5 @@ await syncAttendanceForSection(
     }
   }
 );
+
+module.exports = router;

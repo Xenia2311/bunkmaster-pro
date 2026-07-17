@@ -29,7 +29,7 @@ router.get("/", requireAuth, requireSectionRole(null), async (req, res, next) =>
 router.post(
   "/",
   requireAuth,
-  requireSectionRole(null),
+  requireSectionRole(["cr", "sr"]),
   [
     body("name").trim().notEmpty().withMessage("Subject name is required"),
     body("semesterTotal").optional().isInt({ min: 0 }),

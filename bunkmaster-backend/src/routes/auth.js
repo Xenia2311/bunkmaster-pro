@@ -116,13 +116,14 @@ router.get("/me", requireAuth, async (req, res, next) => {
     res.json({
       user: { id: req.user.id, email: req.user.email, name: req.user.name },
       memberships: memberships.map((m) => ({
-        sectionId: m.sectionId,
+        sectionId:   m.sectionId,
         section: {
           ...m.section,
           name: `${m.section.branch} ${YEAR_LABELS[m.section.year] || m.section.year}`,
         },
-        role: m.role,
+        role:        m.role,
         batchNumber: m.batchNumber,
+        rollNumber:  m.rollNumber ?? null,
       })),
     });
   } catch (err) {
