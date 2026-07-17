@@ -248,3 +248,29 @@
     grid-template-columns: 1fr;
   }
 }
+/* ─── Holiday banner ─────────────────────────────────────────── */
+.today-holiday-banner {
+  display: inline-block;
+  background: rgba(255,187,51,0.1);
+  border: 1px solid rgba(255,187,51,0.35);
+  color: var(--caution);
+  border-radius: var(--r-sm);
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+/* ─── Lab batch badge in slot header ─────────────────────────── */
+.cr-slot__batch-badge {
+  display: inline-block;
+  background: rgba(255,187,51,0.12);
+  color: var(--caution);
+  border: 1px solid rgba(255,187,51,0.3);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  margin-left: 8px;
+  vertical-align: middle;
+}

@@ -15,10 +15,12 @@ function safeFormatDate(val) {
   return formatFriendlyDate(String(val).slice(0, 10));
 }
 
-function addDays(date, n) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + n);
-  return d;
+function addDays(isoDate, n) {
+  // Use shiftDate pattern to avoid UTC drift
+  const s = String(isoDate).slice(0, 10);
+  const [y, m, d] = s.split("-").map(Number);
+  const date = new Date(y, m - 1, d + n);
+  return date;
 }
 
 export default function Cancellations() {

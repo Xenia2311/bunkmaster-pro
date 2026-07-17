@@ -102,6 +102,15 @@ export default function NavBar() {
             <span className="bottom-nav__label">{item.label}</span>
           </NavLink>
         ))}
+        <NavLink
+          to="/change-password"
+          className={({ isActive }) =>
+            `bottom-nav__item${isActive ? " bottom-nav__item--active" : ""}`
+          }
+        >
+          <span className="bottom-nav__icon">🔑</span>
+          <span className="bottom-nav__label">Password</span>
+        </NavLink>
         <button className="bottom-nav__item" onClick={logout}>
           <span className="bottom-nav__icon">⏻</span>
           <span className="bottom-nav__label">Logout</span>
